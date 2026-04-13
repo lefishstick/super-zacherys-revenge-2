@@ -1,4 +1,4 @@
-export type GameState = 'title' | 'playing' | 'gameover' | 'victory';
+export type GameState = 'title' | 'playing' | 'gameover' | 'victory' | 'cutscene';
 
 export interface Entity {
   x: number;
@@ -71,4 +71,17 @@ export interface Level {
   width: number;
   groundY: number;
   isBossLevel: boolean;
+}
+
+export interface CutsceneLine {
+  speaker: string; // 'narrator' | 'zachery' | 'robot' | 'voice' | 'colossus' | ''
+  text: string;
+  style?: 'normal' | 'distorted' | 'whisper';
+}
+
+export interface Cutscene {
+  id: string;
+  lines: CutsceneLine[];
+  title?: string;
+  chapterName?: string;
 }
