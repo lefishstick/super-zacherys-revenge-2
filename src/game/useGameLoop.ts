@@ -660,7 +660,13 @@ export function useGameLoop() {
     ctx.fillStyle = '#ccddaa';
     ctx.font = '16px MedievalSharp';
     ctx.fillText(`Score: ${s.score}`, CANVAS_W - 15, 28);
-    ctx.fillText(`Level ${s.levelNum}`, CANVAS_W - 15, 48);
+    const chapterNames: Record<number, string> = {
+      1: 'Ch.1: The Withered Entrance',
+      2: 'Ch.2: The Fog of Static',
+      3: 'Ch.3: The Iron Roots',
+      4: 'Ch.4: The Rotting Heart',
+    };
+    ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Direction indicator if not boss level
     if (!s.level.isBossLevel) {
