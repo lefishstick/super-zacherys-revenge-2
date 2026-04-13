@@ -389,10 +389,16 @@ export function useGameLoop() {
       if (allDead && p.x > level.width - 100) {
         s.transitioning = true;
         const nextLevel = s.levelNum + 1;
-        if (nextLevel <= 3) {
+        if (nextLevel <= 4) {
           setScore(s.score);
-          setCurrentLevel(nextLevel);
-          initLevel(nextLevel);
+          // Use cutscene-based transition via GameCanvas
+          const handler = (window as any).__handleLevelTransition;
+          if (handler) {
+            handler(nextLevel);
+          } else {
+            setCurrentLevel(nextLevel);
+            initLevel(nextLevel);
+          }
         }
       }
     }
