@@ -33,6 +33,7 @@ export function useGameLoop() {
     levelNum: 1,
     score: 0,
     transitioning: false,
+    bossPhaseTriggered: { 2: false, 3: false } as Record<number, boolean>,
   });
 
   const loadImages = useCallback(() => {
@@ -80,10 +81,24 @@ export function useGameLoop() {
     };
   }, []);
 
+  const beginLevel = useCallback((levelNum: number) => {
+    stateRef.current.gameState = 'playing';
+    stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    setCurrentLevel(levelNum);
+    initLevel(levelNum);
+    setGameState('playing');
+  }, [initLevel]);
+
+  const setGameStateTo = useCallback((state: GameState) => {
+    stateRef.current.gameState = state;
+    setGameState(state);
+  }, []);
+
   const startGame = useCallback(() => {
     stateRef.current.score = 0;
     stateRef.current.gameState = 'playing';
     stateRef.current.player = null;
+    stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
     setScore(0);
     setCurrentLevel(1);
     initLevel(1);
@@ -305,9 +320,20 @@ export function useGameLoop() {
             s.gameState = 'victory';
             setGameState('victory');
           }
-          // Phase transitions
-          if (b.health < b.maxHealth * 0.3) b.phase = 3;
-          else if (b.health < b.maxHealth * 0.6) b.phase = 2;
+          // Phase transitions with cutscenes
+          if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+            b.phase = 3;
+            if (!s.bossPhaseTriggered[3]) {
+              s.bossPhaseTriggered[3] = true;
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+            }
+          } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+            b.phase = 2;
+            if (!s.bossPhaseTriggered[2]) {
+              s.bossPhaseTriggered[2] = true;
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+            }
+          }
         }
       }
 
@@ -374,10 +400,16 @@ export function useGameLoop() {
       if (allDead && p.x > level.width - 100) {
         s.transitioning = true;
         const nextLevel = s.levelNum + 1;
-        if (nextLevel <= 3) {
+        if (nextLevel <= 4) {
           setScore(s.score);
-          setCurrentLevel(nextLevel);
-          initLevel(nextLevel);
+          // Use cutscene-based transition via GameCanvas
+          const handler = (window as any).__handleLevelTransition;
+          if (handler) {
+            handler(nextLevel);
+          } else {
+            setCurrentLevel(nextLevel);
+            initLevel(nextLevel);
+          }
         }
       }
     }
@@ -628,7 +660,13 @@ export function useGameLoop() {
     ctx.fillStyle = '#ccddaa';
     ctx.font = '16px MedievalSharp';
     ctx.fillText(`Score: ${s.score}`, CANVAS_W - 15, 28);
-    ctx.fillText(`Level ${s.levelNum}`, CANVAS_W - 15, 48);
+    const chapterNames: Record<number, string> = {
+      1: 'Ch.1: The Withered Entrance',
+      2: 'Ch.2: The Fog of Static',
+      3: 'Ch.3: The Iron Roots',
+      4: 'Ch.4: The Rotting Heart',
+    };
+    ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Direction indicator if not boss level
     if (!s.level.isBossLevel) {
@@ -673,5 +711,5 @@ export function useGameLoop() {
     };
   }, [loadImages, update, render]);
 
-  return { canvasRef, gameState, score, currentLevel, startGame, CANVAS_W, CANVAS_H };
+  return { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H };
 }
