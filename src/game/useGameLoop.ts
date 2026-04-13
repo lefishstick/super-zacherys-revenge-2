@@ -320,9 +320,20 @@ export function useGameLoop() {
             s.gameState = 'victory';
             setGameState('victory');
           }
-          // Phase transitions
-          if (b.health < b.maxHealth * 0.3) b.phase = 3;
-          else if (b.health < b.maxHealth * 0.6) b.phase = 2;
+          // Phase transitions with cutscenes
+          if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+            b.phase = 3;
+            if (!s.bossPhaseTriggered[3]) {
+              s.bossPhaseTriggered[3] = true;
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+            }
+          } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+            b.phase = 2;
+            if (!s.bossPhaseTriggered[2]) {
+              s.bossPhaseTriggered[2] = true;
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+            }
+          }
         }
       }
 
