@@ -81,10 +81,24 @@ export function useGameLoop() {
     };
   }, []);
 
+  const beginLevel = useCallback((levelNum: number) => {
+    stateRef.current.gameState = 'playing';
+    stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    setCurrentLevel(levelNum);
+    initLevel(levelNum);
+    setGameState('playing');
+  }, [initLevel]);
+
+  const setGameStateTo = useCallback((state: GameState) => {
+    stateRef.current.gameState = state;
+    setGameState(state);
+  }, []);
+
   const startGame = useCallback(() => {
     stateRef.current.score = 0;
     stateRef.current.gameState = 'playing';
     stateRef.current.player = null;
+    stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
     setScore(0);
     setCurrentLevel(1);
     initLevel(1);
