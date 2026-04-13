@@ -33,6 +33,7 @@ export function useGameLoop() {
     levelNum: 1,
     score: 0,
     transitioning: false,
+    bossPhaseTriggered: { 2: false, 3: false } as Record<number, boolean>,
   });
 
   const loadImages = useCallback(() => {
