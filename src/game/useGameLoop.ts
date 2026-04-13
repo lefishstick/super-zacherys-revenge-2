@@ -688,5 +688,5 @@ export function useGameLoop() {
     };
   }, [loadImages, update, render]);
 
-  return { canvasRef, gameState, score, currentLevel, startGame, CANVAS_W, CANVAS_H };
+  return { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H };
 }
