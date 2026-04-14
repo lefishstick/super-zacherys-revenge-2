@@ -463,6 +463,12 @@ export function useGameLoop() {
               e.isAlive = false;
               s.score += e.type === 'onion' ? 300 : 200;
               spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+              if (Math.random() < 0.4) {
+                level.healthPickups.push({
+                  x: e.x + e.width / 2 - 12, y: e.y + e.height / 2 - 12,
+                  width: 24, height: 24, healAmount: 2, collected: false,
+                });
+              }
             }
             return false;
           }
