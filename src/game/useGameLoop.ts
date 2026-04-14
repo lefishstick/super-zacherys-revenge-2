@@ -121,9 +121,165 @@ export function useGameLoop() {
     setGameState('playing');
   }, [initLevel]);
 
+  const startFinisher = useCallback(() => {
+    const s = stateRef.current;
+    const f = s.finisher;
+    f.active = true;
+    f.meter = 0;
+    f.mashCount = 0;
+    f.arrowPhase = 'none';
+    f.arrowX = -100;
+    f.explosionTimer = 0;
+    f.explosionParticlesSpawned = false;
+    f.screenShake = 0;
+    f.jWasUp = true;
+    if (s.level?.boss) {
+      f.arrowTargetX = s.level.boss.x + s.level.boss.width / 2;
+      f.arrowTargetY = s.level.boss.y + s.level.boss.height / 2;
+    }
+  }, []);
+
   const update = useCallback(() => {
     const s = stateRef.current;
     if (s.gameState !== 'playing' || !s.player || !s.level) return;
+
+    // === FINISHER MODE ===
+    const f = s.finisher;
+    if (f.active) {
+      const keys = s.keys;
+      
+      if (f.arrowPhase === 'none') {
+        // Mashing phase: track J presses (must release between presses)
+        const jDown = keys.has('j') || keys.has('z');
+        if (jDown && f.jWasUp) {
+          f.mashCount++;
+          f.meter = Math.min(100, f.meter + 3.5);
+          f.lastMashTime = Date.now();
+          f.jWasUp = false;
+          // Shake feedback
+          f.screenShake = 4;
+          if (s.level.boss) {
+            spawnParticles(
+              s.level.boss.x + s.level.boss.width / 2,
+              s.level.boss.y + s.level.boss.height / 2,
+              f.meter > 70 ? '#ffdd00' : '#ff6600', 3
+            );
+          }
+        }
+        if (!jDown) f.jWasUp = true;
+        
+        // Meter drains slowly
+        if (Date.now() - f.lastMashTime > 300) {
+          f.meter = Math.max(0, f.meter - 0.4);
+        }
+        
+        // If meter full, launch the arrow!
+        if (f.meter >= 100) {
+          f.arrowPhase = 'flying';
+          f.arrowX = -100;
+          if (s.level.boss) {
+            f.arrowTargetX = s.level.boss.x + s.level.boss.width / 2;
+            f.arrowTargetY = s.level.boss.y + s.level.boss.height / 2;
+          }
+          f.arrowY = f.arrowTargetY;
+        }
+        
+        // Boss stays stunned, wobbling
+        if (s.level.boss) {
+          s.level.boss.velocityX = 0;
+          s.level.boss.velocityY = 0;
+          s.level.boss.attackCooldown = 999;
+        }
+      } else if (f.arrowPhase === 'flying') {
+        // Arrow flies from left side across screen toward boss
+        f.arrowX += 28;
+        // Trail particles
+        spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
+        spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
+        
+        if (f.arrowX >= f.arrowTargetX) {
+          f.arrowPhase = 'impact';
+          f.explosionTimer = 0;
+          f.screenShake = 20;
+        }
+      } else if (f.arrowPhase === 'impact') {
+        f.explosionTimer++;
+        f.screenShake = Math.max(0, 20 - f.explosionTimer);
+        
+        // Arrow continues through
+        f.arrowX += 20;
+        
+        if (f.explosionTimer === 1) {
+          // First impact - big flash particles
+          const bx = f.arrowTargetX;
+          const by = f.arrowTargetY;
+          for (let i = 0; i < 40; i++) {
+            s.particles.push({
+              x: bx, y: by,
+              vx: (Math.random() - 0.5) * 16,
+              vy: (Math.random() - 0.5) * 16,
+              life: 40 + Math.random() * 30,
+              maxLife: 70,
+              color: ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'][Math.floor(Math.random() * 4)],
+              size: 4 + Math.random() * 8,
+            });
+          }
+        }
+        
+        if (f.explosionTimer === 30) {
+          f.arrowPhase = 'exploding';
+          f.explosionTimer = 0;
+        }
+      } else if (f.arrowPhase === 'exploding') {
+        f.explosionTimer++;
+        f.screenShake = Math.max(0, 15 - f.explosionTimer * 0.5);
+        
+        // Multiple explosion waves
+        if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
+          const bx = f.arrowTargetX;
+          const by = f.arrowTargetY;
+          const wave = f.explosionTimer / 8;
+          for (let i = 0; i < 30; i++) {
+            const angle = (Math.PI * 2 / 30) * i;
+            const speed = 4 + wave * 2;
+            s.particles.push({
+              x: bx, y: by,
+              vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
+              vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 3,
+              life: 50 + Math.random() * 30,
+              maxLife: 80,
+              color: ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'][Math.floor(Math.random() * 5)],
+              size: 3 + Math.random() * 10,
+            });
+          }
+        }
+        
+        // Make boss disappear
+        if (s.level.boss) {
+          s.level.boss.isAlive = false;
+        }
+        
+        if (f.explosionTimer > 90) {
+          // Finisher complete!
+          f.active = false;
+          s.score += 2000;
+          s.gameState = 'victory';
+          setGameState('victory');
+          setScore(s.score);
+        }
+      }
+      
+      // Update particles during finisher
+      s.particles = s.particles.filter(pt => {
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.vy += 0.1;
+        pt.life--;
+        return pt.life > 0;
+      });
+      
+      return; // Skip normal update during finisher
+    }
     
     const p = s.player;
     const level = s.level;
