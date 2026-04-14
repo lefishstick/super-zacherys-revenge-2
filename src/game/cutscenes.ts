@@ -150,8 +150,10 @@ export const CUTSCENES: Record<string, Cutscene> = {
   ending: {
     id: 'ending',
     lines: [
-      { speaker: 'narrator', text: 'The Rotten Colossus collapses. The chamber falls silent.' },
-      { speaker: 'narrator', text: 'Slowly, the corruption begins to recede. The metal roots crumble to dust.' },
+      { speaker: 'narrator', text: 'Zachery\'s ancient arrow — a relic from his first journey — answers his call one final time.' },
+      { speaker: 'narrator', text: 'It pierces through the Rotten Colossus like a bolt of pure light.' },
+      { speaker: 'narrator', text: 'The Colossus detonates in a cataclysmic explosion, corruption shattering into dust.' },
+      { speaker: 'narrator', text: 'The chamber falls silent. The metal roots crumble away.' },
       { speaker: 'narrator', text: 'Zachery kneels among the ruins of what was once alive.' },
       { speaker: 'zachery', text: '...I won\'t make that mistake again.', style: 'whisper' },
       { speaker: 'narrator', text: 'The forest stirs. New growth pushes through the rust. Perhaps… redemption is possible.' },
