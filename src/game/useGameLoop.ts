@@ -561,53 +561,189 @@ export function useGameLoop() {
     setScore(s.score);
   }, [initLevel]);
 
-  const drawForestBG = (ctx: CanvasRenderingContext2D, camX: number) => {
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    skyGrad.addColorStop(0, '#0a1a0a');
-    skyGrad.addColorStop(0.5, '#0d2810');
-    skyGrad.addColorStop(1, '#1a3318');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    ctx.fillStyle = '#ccddaa';
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.arc(700 - camX * 0.05, 80, 40, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = '#0a1f0a';
-    for (let i = 0; i < 20; i++) {
-      const tx = i * 200 - (camX * 0.2) % 400 - 200;
-      const th = 200 + Math.sin(i * 1.5) * 80;
+  const drawChapterBG = (ctx: CanvasRenderingContext2D, camX: number, chapter: number) => {
+    const t = Date.now();
+    
+    if (chapter === 1) {
+      // WITHERED ENTRANCE — Dark corrupted forest
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0a1a0a');
+      skyGrad.addColorStop(0.5, '#0d2810');
+      skyGrad.addColorStop(1, '#1a3318');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#ccddaa';
+      ctx.globalAlpha = 0.3;
       ctx.beginPath();
-      ctx.moveTo(tx, CANVAS_H - 100);
-      ctx.lineTo(tx + 30, CANVAS_H - 100 - th);
-      ctx.lineTo(tx + 60, CANVAS_H - 100);
+      ctx.arc(700 - camX * 0.05, 80, 40, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1;
+      // Distant corrupted trees
+      ctx.fillStyle = '#0a1f0a';
+      for (let i = 0; i < 20; i++) {
+        const tx = i * 200 - (camX * 0.2) % 400 - 200;
+        const th = 200 + Math.sin(i * 1.5) * 80;
+        ctx.beginPath();
+        ctx.moveTo(tx, CANVAS_H - 100);
+        ctx.lineTo(tx + 30, CANVAS_H - 100 - th);
+        ctx.lineTo(tx + 60, CANVAS_H - 100);
+        ctx.fill();
+      }
+      // Mechanical roots glowing
+      ctx.strokeStyle = '#44ff2266';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 10; i++) {
+        const rx = i * 250 - (camX * 0.3) % 500;
+        ctx.beginPath();
+        ctx.moveTo(rx, CANVAS_H - 100);
+        ctx.quadraticCurveTo(rx + 40, CANVAS_H - 140 - Math.sin(t * 0.002 + i) * 20, rx + 80, CANVAS_H - 100);
+        ctx.stroke();
+      }
+    } else if (chapter === 2) {
+      // FOG OF STATIC — Eerie fog, glitching reality
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0a0a1a');
+      skyGrad.addColorStop(0.5, '#15152a');
+      skyGrad.addColorStop(1, '#1a1a2a');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Static glitch bars
+      ctx.globalAlpha = 0.04;
+      for (let i = 0; i < 6; i++) {
+        const gy = (t * 0.5 + i * 150) % CANVAS_H;
+        ctx.fillStyle = '#aaccff';
+        ctx.fillRect(0, gy, CANVAS_W, 2 + Math.random() * 3);
+      }
+      ctx.globalAlpha = 1;
+      // Fog layers
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#6688aa';
+      for (let i = 0; i < 12; i++) {
+        const fx = (i * 250 + t * 0.015) % (CANVAS_W + 300) - 150;
+        const fy = 250 + Math.sin(t * 0.001 + i * 0.7) * 60;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 80 + Math.sin(i * 2) * 30, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Dead tree silhouettes
+      ctx.fillStyle = '#0f0f22';
+      for (let i = 0; i < 15; i++) {
+        const tx = i * 200 - (camX * 0.25) % 400 - 200;
+        const th = 160 + Math.sin(i * 1.8) * 60;
+        ctx.beginPath();
+        ctx.moveTo(tx, CANVAS_H - 100);
+        ctx.lineTo(tx + 15, CANVAS_H - 100 - th);
+        ctx.lineTo(tx + 30, CANVAS_H - 100);
+        ctx.fill();
+        // Dead branches
+        ctx.strokeStyle = '#1a1a33';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(tx + 15, CANVAS_H - 100 - th * 0.6);
+        ctx.lineTo(tx - 20, CANVAS_H - 100 - th * 0.8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(tx + 15, CANVAS_H - 100 - th * 0.4);
+        ctx.lineTo(tx + 50, CANVAS_H - 100 - th * 0.6);
+        ctx.stroke();
+      }
+    } else if (chapter === 3) {
+      // IRON ROOTS — Industrial underground, metal tunnels
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a0f0a');
+      skyGrad.addColorStop(0.3, '#2a1a10');
+      skyGrad.addColorStop(0.7, '#1a1510');
+      skyGrad.addColorStop(1, '#0f0a05');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Metal girders / pipes in background
+      ctx.strokeStyle = '#3a2a1a';
+      ctx.lineWidth = 8;
+      for (let i = 0; i < 12; i++) {
+        const gx = i * 180 - (camX * 0.15) % 360;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, CANVAS_H - 100);
+        ctx.stroke();
+        // Horizontal beams
+        if (i % 3 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(gx, 150 + i * 30);
+          ctx.lineTo(gx + 180, 150 + i * 30);
+          ctx.stroke();
+        }
+      }
+      // Pulsing veins on walls
+      ctx.strokeStyle = '#ff440044';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 8; i++) {
+        const vx = i * 300 - (camX * 0.2) % 600;
+        const pulse = Math.sin(t * 0.003 + i) * 0.3 + 0.5;
+        ctx.globalAlpha = pulse * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 30, CANVAS_H - 200, vx + 60, CANVAS_H - 250, vx + 40, CANVAS_H - 350);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Sparks
+      ctx.fillStyle = '#ffaa44';
+      for (let i = 0; i < 5; i++) {
+        if (Math.sin(t * 0.01 + i * 3) > 0.95) {
+          const sx = (i * 400 + 200) - (camX * 0.3) % 800;
+          ctx.globalAlpha = 0.6;
+          ctx.fillRect(sx, 100 + i * 60, 2, 2);
+          ctx.fillRect(sx + 3, 103 + i * 60, 2, 2);
+          ctx.globalAlpha = 1;
+        }
+      }
+    } else {
+      // ROTTING HEART — Flesh & metal, grotesque organic-mechanical
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a0505');
+      skyGrad.addColorStop(0.3, '#2a0a0a');
+      skyGrad.addColorStop(0.6, '#1a0808');
+      skyGrad.addColorStop(1, '#0a0303');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Pulsing heartbeat glow
+      const heartbeat = Math.sin(t * 0.005) * 0.5 + 0.5;
+      ctx.globalAlpha = heartbeat * 0.06;
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Fleshy tendrils
+      ctx.strokeStyle = '#660022';
+      ctx.lineWidth = 6;
+      for (let i = 0; i < 10; i++) {
+        const tx = i * 250 - (camX * 0.2) % 500;
+        const sway = Math.sin(t * 0.002 + i * 1.5) * 15;
+        ctx.beginPath();
+        ctx.moveTo(tx, 0);
+        ctx.bezierCurveTo(tx + sway, 150, tx - sway, 300, tx + sway * 0.5, CANVAS_H - 100);
+        ctx.stroke();
+      }
+      // Metal bones
+      ctx.fillStyle = '#2a2a2a';
+      for (let i = 0; i < 8; i++) {
+        const bx = i * 300 - (camX * 0.1) % 600 + 50;
+        ctx.fillRect(bx, 200 + Math.sin(i) * 80, 4, 120);
+        ctx.fillRect(bx - 10, 200 + Math.sin(i) * 80, 24, 4);
+        ctx.fillRect(bx - 10, 316 + Math.sin(i) * 80, 24, 4);
+      }
+      // Corruption particles floating up
+      ctx.fillStyle = '#ff2244';
+      ctx.globalAlpha = 0.15;
+      for (let i = 0; i < 15; i++) {
+        const px = (i * 200 + t * 0.02) % CANVAS_W;
+        const py = CANVAS_H - 100 - ((t * 0.03 + i * 80) % (CANVAS_H - 100));
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + Math.sin(t * 0.005 + i) * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
-
-    ctx.fillStyle = '#0f2a0f';
-    for (let i = 0; i < 15; i++) {
-      const tx = i * 160 - (camX * 0.4) % 320 - 160;
-      const th = 150 + Math.sin(i * 2.3) * 60;
-      ctx.beginPath();
-      ctx.moveTo(tx, CANVAS_H - 100);
-      ctx.lineTo(tx + 25, CANVAS_H - 100 - th);
-      ctx.lineTo(tx + 50, CANVAS_H - 100);
-      ctx.fill();
-    }
-
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#88ff88';
-    for (let i = 0; i < 8; i++) {
-      const fx = (i * 300 + Date.now() * 0.01) % (CANVAS_W + 200) - 100;
-      const fy = 350 + Math.sin(Date.now() * 0.001 + i) * 30;
-      ctx.beginPath();
-      ctx.arc(fx, fy, 50 + Math.sin(i) * 20, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
   };
 
   const render = useCallback(() => {
