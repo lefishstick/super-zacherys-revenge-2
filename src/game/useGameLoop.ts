@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level } from './types';
-import { createLevel } from './levels';
+import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
 import eggImg from '@/assets/eggEnemy.png';
@@ -400,9 +400,8 @@ export function useGameLoop() {
       if (allDead && p.x > level.width - 100) {
         s.transitioning = true;
         const nextLevel = s.levelNum + 1;
-        if (nextLevel <= 4) {
+        if (nextLevel <= TOTAL_LEVELS) {
           setScore(s.score);
-          // Use cutscene-based transition via GameCanvas
           const handler = (window as any).__handleLevelTransition;
           if (handler) {
             handler(nextLevel);
@@ -661,10 +660,14 @@ export function useGameLoop() {
     ctx.font = '16px MedievalSharp';
     ctx.fillText(`Score: ${s.score}`, CANVAS_W - 15, 28);
     const chapterNames: Record<number, string> = {
-      1: 'Ch.1: The Withered Entrance',
-      2: 'Ch.2: The Fog of Static',
-      3: 'Ch.3: The Iron Roots',
-      4: 'Ch.4: The Rotting Heart',
+      1: '1-1: The Withered Entrance',
+      2: '1-2: Mechanical Roots',
+      3: '2-1: Fog Entrance',
+      4: '2-2: Static Depths',
+      5: '3-1: Metal Tunnels',
+      6: '3-2: Pulsing Veins',
+      7: '4-1: Corrupted Approach',
+      8: '4-2: The Rotting Heart',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
