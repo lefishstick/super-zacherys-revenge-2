@@ -654,8 +654,6 @@ export function useGameLoop() {
               b.health = 0;
               startFinisher();
             }
-              setGameState('victory');
-            }
             if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
               b.phase = 3;
               if (!s.bossPhaseTriggered[3]) {
