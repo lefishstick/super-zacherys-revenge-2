@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameLoop } from '@/game/useGameLoop';
-import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE } from '@/game/cutscenes';
+import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE, WEAPON_CUTSCENES } from '@/game/cutscenes';
 import { Cutscene } from '@/game/types';
 import TitleScreen from './TitleScreen';
 import GameOverScreen from './GameOverScreen';
