@@ -95,6 +95,23 @@ const GameCanvas = () => {
     return () => window.removeEventListener('boss_phase_cutscene' as any, handler);
   }, [setGameStateTo]);
 
+  // Handle weapon pickup cutscenes
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      const cutsceneId = WEAPON_CUTSCENES[e.detail];
+      if (cutsceneId) {
+        const scene = CUTSCENES[cutsceneId];
+        if (scene) {
+          setCutsceneQueue([scene]);
+          setShowCutscene(true);
+          setGameStateTo('cutscene');
+        }
+      }
+    };
+    window.addEventListener('weapon_pickup' as any, handler);
+    return () => window.removeEventListener('weapon_pickup' as any, handler);
+  }, [setGameStateTo]);
+
   const handleCutsceneComplete = useCallback(() => {
     setShowCutscene(false);
     setCutsceneQueue([]);
