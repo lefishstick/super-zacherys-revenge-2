@@ -217,8 +217,23 @@ export function useGameLoop() {
         }
         p.currentWeapon = wp.weapon;
         spawnParticles(wp.x + wp.width / 2, wp.y + wp.height / 2, WEAPONS[wp.weapon].color, 25);
-        // Trigger weapon cutscene
         window.dispatchEvent(new CustomEvent('weapon_pickup', { detail: wp.weapon }));
+      }
+    }
+
+    // Health pickup collision
+    for (const hp of level.healthPickups) {
+      if (hp.collected) continue;
+      if (
+        p.x < hp.x + hp.width && p.x + p.width > hp.x &&
+        p.y < hp.y + hp.height && p.y + p.height > hp.y
+      ) {
+        hp.collected = true;
+        const oldHealth = p.health;
+        p.health = Math.min(p.maxHealth, p.health + hp.healAmount);
+        if (p.health > oldHealth) {
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 15);
+        }
       }
     }
 
