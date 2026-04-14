@@ -1,10 +1,10 @@
 import { Level, Enemy, Boss } from './types';
 
-const makeEnemy = (x: number, y: number, type: 'onion' | 'egg'): Enemy => ({
+const makeEnemy = (x: number, y: number, type: 'onion' | 'egg', healthMult = 1): Enemy => ({
   x, y, width: 60, height: 70,
   velocityX: 0, velocityY: 0,
-  type, health: type === 'onion' ? 3 : 2,
-  maxHealth: type === 'onion' ? 3 : 2,
+  type, health: Math.ceil((type === 'onion' ? 3 : 2) * healthMult),
+  maxHealth: Math.ceil((type === 'onion' ? 3 : 2) * healthMult),
   isAlive: true, attackCooldown: 0, direction: -1,
 });
 
@@ -16,118 +16,295 @@ const makeBoss = (x: number, y: number): Boss => ({
   attackCooldown: 120, attackType: 'idle', direction: -1,
 });
 
+export const TOTAL_LEVELS = 8;
+
 export const createLevel = (levelNum: number): Level => {
   const groundY = 500;
-  
-  if (levelNum === 1) {
-    // Chapter 1: The Withered Entrance - continuous ground
-    return {
-      width: 3000,
-      groundY,
-      isBossLevel: false,
-      platforms: [
-        { x: 0, y: groundY, width: 3000, height: 100 },
-        { x: 300, y: 380, width: 150, height: 20 },
-        { x: 600, y: 320, width: 150, height: 20 },
-        { x: 900, y: 360, width: 200, height: 20 },
-        { x: 1200, y: 300, width: 120, height: 20 },
-        { x: 1500, y: 380, width: 180, height: 20 },
-        { x: 1800, y: 340, width: 150, height: 20 },
-        { x: 2100, y: 300, width: 200, height: 20 },
-        { x: 2500, y: 360, width: 150, height: 20 },
-      ],
-      enemies: [
-        makeEnemy(500, groundY - 70, 'egg'),
-        makeEnemy(850, groundY - 70, 'onion'),
-        makeEnemy(1100, groundY - 70, 'egg'),
-        makeEnemy(1400, groundY - 70, 'onion'),
-        makeEnemy(1700, groundY - 70, 'egg'),
-        makeEnemy(2000, groundY - 70, 'onion'),
-        makeEnemy(2400, groundY - 70, 'egg'),
-      ],
-      boss: null,
-    };
-  }
-  
-  if (levelNum === 2) {
-    // Chapter 2: The Fog of Static - continuous ground
-    return {
-      width: 3500,
-      groundY,
-      isBossLevel: false,
-      platforms: [
-        { x: 0, y: groundY, width: 3500, height: 100 },
-        { x: 400, y: 380, width: 120, height: 20 },
-        { x: 700, y: 300, width: 150, height: 20 },
-        { x: 1050, y: 350, width: 130, height: 20 },
-        { x: 1300, y: 280, width: 160, height: 20 },
-        { x: 1800, y: 370, width: 140, height: 20 },
-        { x: 2100, y: 310, width: 170, height: 20 },
-        { x: 2700, y: 350, width: 150, height: 20 },
-        { x: 3000, y: 290, width: 130, height: 20 },
-      ],
-      enemies: [
-        makeEnemy(600, groundY - 70, 'onion'),
-        makeEnemy(950, groundY - 70, 'egg'),
-        makeEnemy(1200, groundY - 70, 'onion'),
-        makeEnemy(1500, groundY - 70, 'egg'),
-        makeEnemy(1800, groundY - 70, 'onion'),
-        makeEnemy(2100, groundY - 70, 'egg'),
-        makeEnemy(2400, groundY - 70, 'onion'),
-        makeEnemy(2700, groundY - 70, 'egg'),
-        makeEnemy(3000, groundY - 70, 'onion'),
-      ],
-      boss: null,
-    };
-  }
 
-  if (levelNum === 3) {
-    // Chapter 3: The Iron Roots - continuous ground, underground feel
-    return {
-      width: 4000,
-      groundY,
-      isBossLevel: false,
-      platforms: [
-        { x: 0, y: groundY, width: 4000, height: 100 },
-        { x: 350, y: 370, width: 140, height: 20 },
-        { x: 650, y: 310, width: 160, height: 20 },
-        { x: 1000, y: 360, width: 130, height: 20 },
-        { x: 1350, y: 280, width: 170, height: 20 },
-        { x: 1700, y: 350, width: 140, height: 20 },
-        { x: 2050, y: 300, width: 150, height: 20 },
-        { x: 2400, y: 370, width: 120, height: 20 },
-        { x: 2750, y: 320, width: 160, height: 20 },
-        { x: 3100, y: 360, width: 140, height: 20 },
-        { x: 3500, y: 300, width: 150, height: 20 },
-      ],
-      enemies: [
-        makeEnemy(400, groundY - 70, 'egg'),
-        makeEnemy(700, groundY - 70, 'onion'),
-        makeEnemy(1050, groundY - 70, 'egg'),
-        makeEnemy(1400, groundY - 70, 'onion'),
-        makeEnemy(1750, groundY - 70, 'egg'),
-        makeEnemy(2100, groundY - 70, 'onion'),
-        makeEnemy(2450, groundY - 70, 'egg'),
-        makeEnemy(2800, groundY - 70, 'onion'),
-        makeEnemy(3150, groundY - 70, 'egg'),
-        makeEnemy(3500, groundY - 70, 'onion'),
-      ],
-      boss: null,
-    };
-  }
+  switch (levelNum) {
+    // ═══════════════════════════════════════════
+    // CHAPTER 1: THE WITHERED ENTRANCE
+    // ═══════════════════════════════════════════
 
-  // Level 4 - Chapter 4: The Rotting Heart - Boss level
-  return {
-    width: 1200,
-    groundY,
-    isBossLevel: true,
-    platforms: [
-      { x: 0, y: groundY, width: 1200, height: 100 },
-      { x: 200, y: 380, width: 120, height: 20 },
-      { x: 500, y: 320, width: 150, height: 20 },
-      { x: 850, y: 380, width: 120, height: 20 },
-    ],
-    enemies: [],
-    boss: makeBoss(900, groundY - 150),
-  };
+    case 1: {
+      // 1-1: Broken Forest Paths — tutorial area, easy enemies
+      return {
+        width: 2800,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 2800, height: 100 },
+          // Tutorial stepping stones
+          { x: 350, y: 400, width: 140, height: 20 },
+          { x: 600, y: 350, width: 120, height: 20 },
+          { x: 900, y: 380, width: 160, height: 20 },
+          { x: 1200, y: 330, width: 130, height: 20 },
+          { x: 1500, y: 370, width: 150, height: 20 },
+          { x: 1800, y: 310, width: 140, height: 20 },
+          { x: 2100, y: 360, width: 170, height: 20 },
+          { x: 2450, y: 340, width: 120, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(500, groundY - 70, 'egg'),
+          makeEnemy(900, groundY - 70, 'egg'),
+          makeEnemy(1300, groundY - 70, 'onion'),
+          makeEnemy(1700, groundY - 70, 'egg'),
+          makeEnemy(2200, groundY - 70, 'onion'),
+        ],
+        boss: null,
+      };
+    }
+
+    case 2: {
+      // 1-2: Mechanical Roots — half-organic, half-metal trees, ruined machines
+      return {
+        width: 3200,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 3200, height: 100 },
+          // Elevated ruins / broken machinery platforms
+          { x: 280, y: 390, width: 180, height: 20 },
+          { x: 550, y: 330, width: 100, height: 20 },
+          { x: 750, y: 380, width: 200, height: 20 },
+          { x: 1050, y: 300, width: 120, height: 20 },
+          { x: 1300, y: 360, width: 160, height: 20 },
+          { x: 1600, y: 310, width: 140, height: 20 },
+          { x: 1900, y: 370, width: 180, height: 20 },
+          { x: 2200, y: 290, width: 130, height: 20 },
+          { x: 2500, y: 350, width: 150, height: 20 },
+          { x: 2850, y: 320, width: 140, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(400, groundY - 70, 'egg'),
+          makeEnemy(700, groundY - 70, 'onion'),
+          makeEnemy(1000, groundY - 70, 'egg'),
+          makeEnemy(1350, groundY - 70, 'onion'),
+          makeEnemy(1650, groundY - 70, 'egg'),
+          makeEnemy(2000, groundY - 70, 'onion'),
+          makeEnemy(2400, groundY - 70, 'egg'),
+          makeEnemy(2800, groundY - 70, 'onion'),
+        ],
+        boss: null,
+      };
+    }
+
+    // ═══════════════════════════════════════════
+    // CHAPTER 2: THE FOG OF STATIC
+    // ═══════════════════════════════════════════
+
+    case 3: {
+      // 2-1: Fog Entrance — enemies appear suddenly, tight platforms
+      return {
+        width: 3000,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 3000, height: 100 },
+          // Tight clustered platforms for ambush areas
+          { x: 350, y: 400, width: 100, height: 20 },
+          { x: 500, y: 350, width: 90, height: 20 },
+          { x: 650, y: 300, width: 110, height: 20 },
+          { x: 900, y: 380, width: 130, height: 20 },
+          { x: 1200, y: 320, width: 100, height: 20 },
+          { x: 1450, y: 370, width: 120, height: 20 },
+          { x: 1700, y: 280, width: 140, height: 20 },
+          { x: 1950, y: 350, width: 110, height: 20 },
+          { x: 2250, y: 310, width: 130, height: 20 },
+          { x: 2550, y: 370, width: 100, height: 20 },
+          { x: 2780, y: 300, width: 120, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(450, groundY - 70, 'onion'),
+          makeEnemy(700, groundY - 70, 'egg'),
+          makeEnemy(1000, groundY - 70, 'onion'),
+          makeEnemy(1300, groundY - 70, 'egg'),
+          makeEnemy(1550, groundY - 70, 'onion'),
+          makeEnemy(1800, groundY - 70, 'egg'),
+          makeEnemy(2100, groundY - 70, 'onion'),
+          makeEnemy(2400, groundY - 70, 'egg'),
+          makeEnemy(2700, groundY - 70, 'onion'),
+        ],
+        boss: null,
+      };
+    }
+
+    case 4: {
+      // 2-2: Static Depths — harder enemies, vertical platforming
+      return {
+        width: 3500,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 3500, height: 100 },
+          // Staircase-style upward climb sections
+          { x: 300, y: 420, width: 120, height: 20 },
+          { x: 450, y: 360, width: 100, height: 20 },
+          { x: 600, y: 300, width: 110, height: 20 },
+          { x: 800, y: 250, width: 130, height: 20 },
+          { x: 1100, y: 380, width: 160, height: 20 },
+          { x: 1400, y: 310, width: 120, height: 20 },
+          { x: 1650, y: 260, width: 140, height: 20 },
+          { x: 1900, y: 350, width: 150, height: 20 },
+          { x: 2200, y: 280, width: 120, height: 20 },
+          { x: 2500, y: 370, width: 130, height: 20 },
+          { x: 2800, y: 300, width: 140, height: 20 },
+          { x: 3100, y: 340, width: 160, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(500, groundY - 70, 'onion', 1.3),
+          makeEnemy(800, groundY - 70, 'egg', 1.3),
+          makeEnemy(1100, groundY - 70, 'onion'),
+          makeEnemy(1400, groundY - 70, 'egg', 1.3),
+          makeEnemy(1700, groundY - 70, 'onion', 1.3),
+          makeEnemy(2000, groundY - 70, 'egg'),
+          makeEnemy(2300, groundY - 70, 'onion', 1.3),
+          makeEnemy(2600, groundY - 70, 'egg', 1.3),
+          makeEnemy(2900, groundY - 70, 'onion'),
+          makeEnemy(3200, groundY - 70, 'egg', 1.3),
+        ],
+        boss: null,
+      };
+    }
+
+    // ═══════════════════════════════════════════
+    // CHAPTER 3: THE IRON ROOTS
+    // ═══════════════════════════════════════════
+
+    case 5: {
+      // 3-1: Metal Tunnels — conveyor-belt style long platforms, armored enemies
+      return {
+        width: 3800,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 3800, height: 100 },
+          // Long industrial platforms
+          { x: 300, y: 380, width: 250, height: 20 },
+          { x: 700, y: 320, width: 200, height: 20 },
+          { x: 1050, y: 370, width: 180, height: 20 },
+          { x: 1400, y: 290, width: 220, height: 20 },
+          { x: 1800, y: 360, width: 200, height: 20 },
+          { x: 2150, y: 300, width: 180, height: 20 },
+          { x: 2500, y: 370, width: 240, height: 20 },
+          { x: 2900, y: 310, width: 200, height: 20 },
+          { x: 3300, y: 350, width: 180, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(450, groundY - 70, 'egg', 1.5),
+          makeEnemy(800, groundY - 70, 'onion', 1.5),
+          makeEnemy(1150, groundY - 70, 'egg', 1.5),
+          makeEnemy(1500, groundY - 70, 'onion', 1.5),
+          makeEnemy(1900, groundY - 70, 'egg', 1.5),
+          makeEnemy(2250, groundY - 70, 'onion', 1.5),
+          makeEnemy(2600, groundY - 70, 'egg', 1.5),
+          makeEnemy(2950, groundY - 70, 'onion', 1.5),
+          makeEnemy(3350, groundY - 70, 'egg', 1.5),
+        ],
+        boss: null,
+      };
+    }
+
+    case 6: {
+      // 3-2: Pulsing Veins — challenging platforming, heavy brutes
+      return {
+        width: 4000,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 4000, height: 100 },
+          // Complex multi-tier layout
+          { x: 250, y: 400, width: 140, height: 20 },
+          { x: 450, y: 340, width: 120, height: 20 },
+          { x: 700, y: 280, width: 150, height: 20 },
+          { x: 950, y: 380, width: 180, height: 20 },
+          { x: 1250, y: 310, width: 130, height: 20 },
+          { x: 1500, y: 260, width: 160, height: 20 },
+          { x: 1800, y: 370, width: 140, height: 20 },
+          { x: 2100, y: 290, width: 170, height: 20 },
+          { x: 2400, y: 350, width: 130, height: 20 },
+          { x: 2700, y: 270, width: 150, height: 20 },
+          { x: 3000, y: 360, width: 180, height: 20 },
+          { x: 3350, y: 300, width: 140, height: 20 },
+          { x: 3650, y: 340, width: 160, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(400, groundY - 70, 'onion', 1.7),
+          makeEnemy(750, groundY - 70, 'egg', 1.7),
+          makeEnemy(1100, groundY - 70, 'onion', 1.7),
+          makeEnemy(1400, groundY - 70, 'egg', 1.7),
+          makeEnemy(1700, groundY - 70, 'onion', 2),
+          makeEnemy(2050, groundY - 70, 'egg', 1.7),
+          makeEnemy(2350, groundY - 70, 'onion', 2),
+          makeEnemy(2650, groundY - 70, 'egg', 1.7),
+          makeEnemy(3000, groundY - 70, 'onion', 2),
+          makeEnemy(3400, groundY - 70, 'egg', 2),
+          makeEnemy(3700, groundY - 70, 'onion', 2),
+        ],
+        boss: null,
+      };
+    }
+
+    // ═══════════════════════════════════════════
+    // CHAPTER 4: THE ROTTING HEART
+    // ═══════════════════════════════════════════
+
+    case 7: {
+      // 4-1: Corrupted Approach — hybrid flesh-metal terrain, fast aggressive enemies
+      return {
+        width: 3500,
+        groundY,
+        isBossLevel: false,
+        platforms: [
+          { x: 0, y: groundY, width: 3500, height: 100 },
+          // Organic-looking scattered platforms
+          { x: 300, y: 390, width: 130, height: 20 },
+          { x: 550, y: 330, width: 110, height: 20 },
+          { x: 800, y: 370, width: 150, height: 20 },
+          { x: 1100, y: 290, width: 120, height: 20 },
+          { x: 1350, y: 360, width: 140, height: 20 },
+          { x: 1650, y: 300, width: 130, height: 20 },
+          { x: 1950, y: 370, width: 160, height: 20 },
+          { x: 2250, y: 280, width: 140, height: 20 },
+          { x: 2550, y: 350, width: 120, height: 20 },
+          { x: 2850, y: 310, width: 150, height: 20 },
+          { x: 3150, y: 360, width: 130, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(400, groundY - 70, 'egg', 2),
+          makeEnemy(700, groundY - 70, 'onion', 2),
+          makeEnemy(1000, groundY - 70, 'egg', 2),
+          makeEnemy(1250, groundY - 70, 'onion', 2),
+          makeEnemy(1500, groundY - 70, 'egg', 2.5),
+          makeEnemy(1800, groundY - 70, 'onion', 2),
+          makeEnemy(2100, groundY - 70, 'egg', 2.5),
+          makeEnemy(2400, groundY - 70, 'onion', 2.5),
+          makeEnemy(2700, groundY - 70, 'egg', 2),
+          makeEnemy(3000, groundY - 70, 'onion', 2.5),
+          makeEnemy(3300, groundY - 70, 'egg', 2.5),
+        ],
+        boss: null,
+      };
+    }
+
+    case 8:
+    default: {
+      // 4-2: Boss Arena — The Rotten Colossus
+      return {
+        width: 1200,
+        groundY,
+        isBossLevel: true,
+        platforms: [
+          { x: 0, y: groundY, width: 1200, height: 100 },
+          { x: 150, y: 380, width: 120, height: 20 },
+          { x: 450, y: 320, width: 150, height: 20 },
+          { x: 750, y: 380, width: 120, height: 20 },
+          { x: 300, y: 250, width: 100, height: 20 },
+          { x: 650, y: 250, width: 100, height: 20 },
+        ],
+        enemies: [],
+        boss: makeBoss(900, groundY - 150),
+      };
+    }
+  }
 };
