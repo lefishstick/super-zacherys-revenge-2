@@ -724,7 +724,7 @@ export function useGameLoop() {
 
     p.score = s.score;
     setScore(s.score);
-  }, [initLevel]);
+  }, [initLevel, startFinisher]);
 
   const drawChapterBG = (ctx: CanvasRenderingContext2D, camX: number, chapter: number) => {
     const t = Date.now();
