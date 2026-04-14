@@ -157,6 +157,67 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'narrator', text: 'The forest stirs. New growth pushes through the rust. Perhaps… redemption is possible.' },
     ],
   },
+
+  // ═══════════════════════════════════════════
+  // WEAPON DISCOVERY CUTSCENES
+  // ═══════════════════════════════════════════
+
+  weapon_vine_whip: {
+    id: 'weapon_vine_whip',
+    title: 'New Weapon Acquired',
+    chapterName: 'Vine Whip',
+    lines: [
+      { speaker: 'narrator', text: 'Among the mechanical roots, a living vine still pulses with ancient life.' },
+      { speaker: 'narrator', text: 'It reaches out to Zachery — not as a threat, but as an offering.' },
+      { speaker: 'zachery', text: 'It\'s still alive… fighting the corruption from within.' },
+      { speaker: 'narrator', text: 'The vine coils around his arm, thorns extending outward. A symbiotic bond.' },
+      { speaker: 'zachery', text: 'Together, then.' },
+      { speaker: 'narrator', text: 'Vine Whip: Extended reach, lashes enemies from a distance. Press 1-2 to switch weapons.' },
+    ],
+  },
+
+  weapon_static_bolt: {
+    id: 'weapon_static_bolt',
+    title: 'New Weapon Acquired',
+    chapterName: 'Static Bolt',
+    lines: [
+      { speaker: 'narrator', text: 'Deep in the fog, a fractured conduit sparks with unstable energy.' },
+      { speaker: 'narrator', text: 'The static that distorts reality here is raw, chaotic power.' },
+      { speaker: 'zachery', text: 'If I can channel this…' },
+      { speaker: 'narrator', text: 'Zachery plunges his hand into the conduit. Pain — then control.' },
+      { speaker: 'voice', text: 'THAT POWER… IS NOT YOURS.', style: 'distorted' },
+      { speaker: 'zachery', text: 'It is now.' },
+      { speaker: 'narrator', text: 'Static Bolt: Fires ranged energy projectiles. Effective at distance.' },
+    ],
+  },
+
+  weapon_iron_fist: {
+    id: 'weapon_iron_fist',
+    title: 'New Weapon Acquired',
+    chapterName: 'Iron Fist',
+    lines: [
+      { speaker: 'narrator', text: 'A fallen war machine lies crumpled in the metal tunnels. Its arm still intact.' },
+      { speaker: 'narrator', text: 'The gauntlet hums with residual power — built for destruction.' },
+      { speaker: 'zachery', text: 'Heavy… but it hits like nothing else.' },
+      { speaker: 'narrator', text: 'He rips the gauntlet free. The machine\'s last gift to the living.' },
+      { speaker: 'narrator', text: 'Iron Fist: Devastating damage, slower attack speed. Crushes armored foes.' },
+    ],
+  },
+
+  weapon_corruption_purge: {
+    id: 'weapon_corruption_purge',
+    title: 'New Ability Acquired',
+    chapterName: 'Corruption Purge',
+    lines: [
+      { speaker: 'narrator', text: 'At the threshold of the Rotting Heart, the corruption is overwhelming.' },
+      { speaker: 'narrator', text: 'But deep within Zachery, something resonates — a memory of what was lost.' },
+      { speaker: 'zachery', text: 'I remember now. I was part of this. I helped create it.', style: 'whisper' },
+      { speaker: 'narrator', text: 'Guilt becomes power. Regret becomes a weapon.' },
+      { speaker: 'zachery', text: 'Then I\'ll use it to undo what I\'ve done.' },
+      { speaker: 'narrator', text: 'A wave of pure energy erupts from within him — the Corruption Purge.' },
+      { speaker: 'narrator', text: 'Corruption Purge: Area-of-effect blast that damages all nearby enemies.' },
+    ],
+  },
 };
 
 // Map of which cutscene plays before each level
@@ -169,6 +230,14 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   6: ['chapter3_mid'],
   7: ['chapter3_end', 'chapter4_start'],
   8: ['chapter4_boss'],
+};
+
+// Map of which weapon cutscene plays when a weapon is picked up
+export const WEAPON_CUTSCENES: Record<string, string> = {
+  vine_whip: 'weapon_vine_whip',
+  static_bolt: 'weapon_static_bolt',
+  iron_fist: 'weapon_iron_fist',
+  corruption_purge: 'weapon_corruption_purge',
 };
 
 export const VICTORY_CUTSCENE = 'ending';

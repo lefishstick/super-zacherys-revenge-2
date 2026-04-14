@@ -1,5 +1,53 @@
 export type GameState = 'title' | 'playing' | 'gameover' | 'victory' | 'cutscene';
 
+export type WeaponType = 'forest_blade' | 'vine_whip' | 'static_bolt' | 'iron_fist' | 'corruption_purge';
+
+export interface WeaponDef {
+  id: WeaponType;
+  name: string;
+  description: string;
+  damage: number;
+  range: number;
+  speed: number; // attack cooldown in frames
+  isRanged: boolean;
+  projectileSpeed?: number;
+  aoeRadius?: number;
+  color: string;
+  glowColor: string;
+}
+
+export const WEAPONS: Record<WeaponType, WeaponDef> = {
+  forest_blade: {
+    id: 'forest_blade', name: 'Forest Blade', description: 'A simple blade forged from ancient wood.',
+    damage: 1, range: 70, speed: 20, isRanged: false, color: '#aaff44', glowColor: '#88cc22',
+  },
+  vine_whip: {
+    id: 'vine_whip', name: 'Vine Whip', description: 'A living whip that lashes out with thorned reach.',
+    damage: 1, range: 120, speed: 25, isRanged: false, color: '#44dd66', glowColor: '#22aa44',
+  },
+  static_bolt: {
+    id: 'static_bolt', name: 'Static Bolt', description: 'Fires crackling bolts of corrupted energy.',
+    damage: 2, range: 50, speed: 30, isRanged: true, projectileSpeed: 10, color: '#aaccff', glowColor: '#6699ff',
+  },
+  iron_fist: {
+    id: 'iron_fist', name: 'Iron Fist', description: 'A heavy gauntlet torn from a fallen machine. Slow but devastating.',
+    damage: 4, range: 60, speed: 40, isRanged: false, color: '#ffaa44', glowColor: '#ff6622',
+  },
+  corruption_purge: {
+    id: 'corruption_purge', name: 'Corruption Purge', description: 'Unleashes a wave of cleansing energy in all directions.',
+    damage: 3, range: 90, speed: 35, isRanged: false, aoeRadius: 130, color: '#ff44ff', glowColor: '#cc22cc',
+  },
+};
+
+export interface WeaponPickup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  weapon: WeaponType;
+  collected: boolean;
+}
+
 export interface Entity {
   x: number;
   y: number;
@@ -19,6 +67,8 @@ export interface Player extends Entity {
   onGround: boolean;
   invincibleTimer: number;
   score: number;
+  currentWeapon: WeaponType;
+  weapons: WeaponType[];
 }
 
 export interface Enemy extends Entity {
@@ -71,10 +121,11 @@ export interface Level {
   width: number;
   groundY: number;
   isBossLevel: boolean;
+  weaponPickups: WeaponPickup[];
 }
 
 export interface CutsceneLine {
-  speaker: string; // 'narrator' | 'zachery' | 'robot' | 'voice' | 'colossus' | ''
+  speaker: string;
   text: string;
   style?: 'normal' | 'distorted' | 'whisper';
 }
