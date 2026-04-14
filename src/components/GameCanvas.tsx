@@ -15,14 +15,14 @@ const GameCanvas = () => {
   const [showVictoryCutscene, setShowVictoryCutscene] = useState(false);
 
   useEffect(() => {
-    if (gameState === 'playing') {
+    if (gameState === 'playing' || gameState === 'cutscene') {
       if (!audioRef.current) {
         audioRef.current = new Audio('/audio/theme.mp3');
         audioRef.current.loop = true;
         audioRef.current.volume = 0.4;
       }
       audioRef.current.play().catch(() => {});
-    } else if (gameState === 'title') {
+    } else if (gameState === 'title' || gameState === 'gameover') {
       audioRef.current?.pause();
       if (audioRef.current) audioRef.current.currentTime = 0;
     }
