@@ -759,7 +759,7 @@ export function useGameLoop() {
     const camX = s.cameraX;
     const weapon = WEAPONS[p.currentWeapon];
 
-    drawForestBG(ctx, camX);
+    drawChapterBG(ctx, camX, s.level.chapter);
 
     // Draw platforms
     for (const plat of s.level.platforms) {
