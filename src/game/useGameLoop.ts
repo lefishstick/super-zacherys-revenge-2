@@ -32,6 +32,22 @@ export function useGameLoop() {
     score: 0,
     transitioning: false,
     bossPhaseTriggered: { 2: false, 3: false } as Record<number, boolean>,
+    // Boss finisher state
+    finisher: {
+      active: false,
+      meter: 0,        // 0-100
+      mashCount: 0,
+      lastMashTime: 0,
+      arrowPhase: 'none' as 'none' | 'flying' | 'impact' | 'exploding',
+      arrowX: -100,
+      arrowY: 0,
+      arrowTargetX: 0,
+      arrowTargetY: 0,
+      explosionTimer: 0,
+      explosionParticlesSpawned: false,
+      screenShake: 0,
+      jWasUp: true,
+    },
   });
 
   const loadImages = useCallback(() => {
