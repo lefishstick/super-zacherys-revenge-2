@@ -114,6 +114,15 @@ export interface Platform {
   height: number;
 }
 
+export interface HealthPickup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  healAmount: number;
+  collected: boolean;
+}
+
 export interface Level {
   platforms: Platform[];
   enemies: Enemy[];
@@ -122,6 +131,8 @@ export interface Level {
   groundY: number;
   isBossLevel: boolean;
   weaponPickups: WeaponPickup[];
+  healthPickups: HealthPickup[];
+  chapter: number;
 }
 
 export interface CutsceneLine {
