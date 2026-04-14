@@ -924,6 +924,15 @@ export function useGameLoop() {
     const camX = s.cameraX;
     const weapon = WEAPONS[p.currentWeapon];
 
+    // Screen shake from finisher
+    const f = s.finisher;
+    if (f.screenShake > 0) {
+      ctx.save();
+      const shakeX = (Math.random() - 0.5) * f.screenShake * 2;
+      const shakeY = (Math.random() - 0.5) * f.screenShake * 2;
+      ctx.translate(shakeX, shakeY);
+    }
+
     drawChapterBG(ctx, camX, s.level.chapter);
 
     // Chapter-themed platform colors
