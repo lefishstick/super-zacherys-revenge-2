@@ -1,4 +1,4 @@
-import { Level, Enemy, Boss } from './types';
+import { Level, Enemy, Boss, WeaponPickup } from './types';
 
 const makeEnemy = (x: number, y: number, type: 'onion' | 'egg', healthMult = 1): Enemy => ({
   x, y, width: 60, height: 70,
@@ -16,25 +16,21 @@ const makeBoss = (x: number, y: number): Boss => ({
   attackCooldown: 120, attackType: 'idle', direction: -1,
 });
 
+const makeWeaponPickup = (x: number, y: number, weapon: WeaponPickup['weapon']): WeaponPickup => ({
+  x, y, width: 30, height: 30, weapon, collected: false,
+});
+
 export const TOTAL_LEVELS = 8;
 
 export const createLevel = (levelNum: number): Level => {
   const groundY = 500;
 
   switch (levelNum) {
-    // ═══════════════════════════════════════════
-    // CHAPTER 1: THE WITHERED ENTRANCE
-    // ═══════════════════════════════════════════
-
     case 1: {
-      // 1-1: Broken Forest Paths — tutorial area, easy enemies
       return {
-        width: 2800,
-        groundY,
-        isBossLevel: false,
+        width: 2800, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 2800, height: 100 },
-          // Tutorial stepping stones
           { x: 350, y: 400, width: 140, height: 20 },
           { x: 600, y: 350, width: 120, height: 20 },
           { x: 900, y: 380, width: 160, height: 20 },
@@ -52,18 +48,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(2200, groundY - 70, 'onion'),
         ],
         boss: null,
+        weaponPickups: [], // Start with Forest Blade by default
       };
     }
 
     case 2: {
-      // 1-2: Mechanical Roots — half-organic, half-metal trees, ruined machines
       return {
-        width: 3200,
-        groundY,
-        isBossLevel: false,
+        width: 3200, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 3200, height: 100 },
-          // Elevated ruins / broken machinery platforms
           { x: 280, y: 390, width: 180, height: 20 },
           { x: 550, y: 330, width: 100, height: 20 },
           { x: 750, y: 380, width: 200, height: 20 },
@@ -86,22 +79,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(2800, groundY - 70, 'onion'),
         ],
         boss: null,
+        weaponPickups: [makeWeaponPickup(1600, groundY - 40, 'vine_whip')],
       };
     }
 
-    // ═══════════════════════════════════════════
-    // CHAPTER 2: THE FOG OF STATIC
-    // ═══════════════════════════════════════════
-
     case 3: {
-      // 2-1: Fog Entrance — enemies appear suddenly, tight platforms
       return {
-        width: 3000,
-        groundY,
-        isBossLevel: false,
+        width: 3000, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 3000, height: 100 },
-          // Tight clustered platforms for ambush areas
           { x: 350, y: 400, width: 100, height: 20 },
           { x: 500, y: 350, width: 90, height: 20 },
           { x: 650, y: 300, width: 110, height: 20 },
@@ -126,18 +112,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(2700, groundY - 70, 'onion'),
         ],
         boss: null,
+        weaponPickups: [],
       };
     }
 
     case 4: {
-      // 2-2: Static Depths — harder enemies, vertical platforming
       return {
-        width: 3500,
-        groundY,
-        isBossLevel: false,
+        width: 3500, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 3500, height: 100 },
-          // Staircase-style upward climb sections
           { x: 300, y: 420, width: 120, height: 20 },
           { x: 450, y: 360, width: 100, height: 20 },
           { x: 600, y: 300, width: 110, height: 20 },
@@ -164,22 +147,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(3200, groundY - 70, 'egg', 1.3),
         ],
         boss: null,
+        weaponPickups: [makeWeaponPickup(1650, 230, 'static_bolt')],
       };
     }
 
-    // ═══════════════════════════════════════════
-    // CHAPTER 3: THE IRON ROOTS
-    // ═══════════════════════════════════════════
-
     case 5: {
-      // 3-1: Metal Tunnels — conveyor-belt style long platforms, armored enemies
       return {
-        width: 3800,
-        groundY,
-        isBossLevel: false,
+        width: 3800, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 3800, height: 100 },
-          // Long industrial platforms
           { x: 300, y: 380, width: 250, height: 20 },
           { x: 700, y: 320, width: 200, height: 20 },
           { x: 1050, y: 370, width: 180, height: 20 },
@@ -202,18 +178,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(3350, groundY - 70, 'egg', 1.5),
         ],
         boss: null,
+        weaponPickups: [],
       };
     }
 
     case 6: {
-      // 3-2: Pulsing Veins — challenging platforming, heavy brutes
       return {
-        width: 4000,
-        groundY,
-        isBossLevel: false,
+        width: 4000, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 4000, height: 100 },
-          // Complex multi-tier layout
           { x: 250, y: 400, width: 140, height: 20 },
           { x: 450, y: 340, width: 120, height: 20 },
           { x: 700, y: 280, width: 150, height: 20 },
@@ -242,22 +215,15 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(3700, groundY - 70, 'onion', 2),
         ],
         boss: null,
+        weaponPickups: [makeWeaponPickup(2100, groundY - 40, 'iron_fist')],
       };
     }
 
-    // ═══════════════════════════════════════════
-    // CHAPTER 4: THE ROTTING HEART
-    // ═══════════════════════════════════════════
-
     case 7: {
-      // 4-1: Corrupted Approach — hybrid flesh-metal terrain, fast aggressive enemies
       return {
-        width: 3500,
-        groundY,
-        isBossLevel: false,
+        width: 3500, groundY, isBossLevel: false,
         platforms: [
           { x: 0, y: groundY, width: 3500, height: 100 },
-          // Organic-looking scattered platforms
           { x: 300, y: 390, width: 130, height: 20 },
           { x: 550, y: 330, width: 110, height: 20 },
           { x: 800, y: 370, width: 150, height: 20 },
@@ -284,16 +250,14 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(3300, groundY - 70, 'egg', 2.5),
         ],
         boss: null,
+        weaponPickups: [makeWeaponPickup(1650, groundY - 40, 'corruption_purge')],
       };
     }
 
     case 8:
     default: {
-      // 4-2: Boss Arena — The Rotten Colossus
       return {
-        width: 1200,
-        groundY,
-        isBossLevel: true,
+        width: 1200, groundY, isBossLevel: true,
         platforms: [
           { x: 0, y: groundY, width: 1200, height: 100 },
           { x: 150, y: 380, width: 120, height: 20 },
@@ -304,6 +268,7 @@ export const createLevel = (levelNum: number): Level => {
         ],
         enemies: [],
         boss: makeBoss(900, groundY - 150),
+        weaponPickups: [],
       };
     }
   }
