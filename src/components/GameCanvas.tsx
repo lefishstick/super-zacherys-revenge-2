@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameLoop } from '@/game/useGameLoop';
-import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE } from '@/game/cutscenes';
+import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE, WEAPON_CUTSCENES } from '@/game/cutscenes';
 import { Cutscene } from '@/game/types';
 import TitleScreen from './TitleScreen';
 import GameOverScreen from './GameOverScreen';
@@ -93,6 +93,23 @@ const GameCanvas = () => {
     };
     window.addEventListener('boss_phase_cutscene' as any, handler);
     return () => window.removeEventListener('boss_phase_cutscene' as any, handler);
+  }, [setGameStateTo]);
+
+  // Handle weapon pickup cutscenes
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      const cutsceneId = WEAPON_CUTSCENES[e.detail];
+      if (cutsceneId) {
+        const scene = CUTSCENES[cutsceneId];
+        if (scene) {
+          setCutsceneQueue([scene]);
+          setShowCutscene(true);
+          setGameStateTo('cutscene');
+        }
+      }
+    };
+    window.addEventListener('weapon_pickup' as any, handler);
+    return () => window.removeEventListener('weapon_pickup' as any, handler);
   }, [setGameStateTo]);
 
   const handleCutsceneComplete = useCallback(() => {
