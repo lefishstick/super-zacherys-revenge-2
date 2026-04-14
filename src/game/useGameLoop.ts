@@ -32,6 +32,22 @@ export function useGameLoop() {
     score: 0,
     transitioning: false,
     bossPhaseTriggered: { 2: false, 3: false } as Record<number, boolean>,
+    // Boss finisher state
+    finisher: {
+      active: false,
+      meter: 0,        // 0-100
+      mashCount: 0,
+      lastMashTime: 0,
+      arrowPhase: 'none' as 'none' | 'flying' | 'impact' | 'exploding',
+      arrowX: -100,
+      arrowY: 0,
+      arrowTargetX: 0,
+      arrowTargetY: 0,
+      explosionTimer: 0,
+      explosionParticlesSpawned: false,
+      screenShake: 0,
+      jWasUp: true,
+    },
   });
 
   const loadImages = useCallback(() => {
@@ -81,9 +97,16 @@ export function useGameLoop() {
     };
   }, []);
 
+  const resetFinisher = () => {
+    const f = stateRef.current.finisher;
+    f.active = false; f.meter = 0; f.mashCount = 0; f.arrowPhase = 'none';
+    f.explosionTimer = 0; f.screenShake = 0; f.explosionParticlesSpawned = false;
+  };
+
   const beginLevel = useCallback((levelNum: number) => {
     stateRef.current.gameState = 'playing';
     stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    resetFinisher();
     setCurrentLevel(levelNum);
     initLevel(levelNum);
     setGameState('playing');
@@ -99,15 +122,172 @@ export function useGameLoop() {
     stateRef.current.gameState = 'playing';
     stateRef.current.player = null;
     stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    resetFinisher();
     setScore(0);
     setCurrentLevel(1);
     initLevel(1);
     setGameState('playing');
   }, [initLevel]);
 
+  const startFinisher = useCallback(() => {
+    const s = stateRef.current;
+    const f = s.finisher;
+    f.active = true;
+    f.meter = 0;
+    f.mashCount = 0;
+    f.arrowPhase = 'none';
+    f.arrowX = -100;
+    f.explosionTimer = 0;
+    f.explosionParticlesSpawned = false;
+    f.screenShake = 0;
+    f.jWasUp = true;
+    if (s.level?.boss) {
+      f.arrowTargetX = s.level.boss.x + s.level.boss.width / 2;
+      f.arrowTargetY = s.level.boss.y + s.level.boss.height / 2;
+    }
+  }, []);
+
   const update = useCallback(() => {
     const s = stateRef.current;
     if (s.gameState !== 'playing' || !s.player || !s.level) return;
+
+    // === FINISHER MODE ===
+    const f = s.finisher;
+    if (f.active) {
+      const keys = s.keys;
+      
+      if (f.arrowPhase === 'none') {
+        // Mashing phase: track J presses (must release between presses)
+        const jDown = keys.has('j') || keys.has('z');
+        if (jDown && f.jWasUp) {
+          f.mashCount++;
+          f.meter = Math.min(100, f.meter + 3.5);
+          f.lastMashTime = Date.now();
+          f.jWasUp = false;
+          // Shake feedback
+          f.screenShake = 4;
+          if (s.level.boss) {
+            spawnParticles(
+              s.level.boss.x + s.level.boss.width / 2,
+              s.level.boss.y + s.level.boss.height / 2,
+              f.meter > 70 ? '#ffdd00' : '#ff6600', 3
+            );
+          }
+        }
+        if (!jDown) f.jWasUp = true;
+        
+        // Meter drains slowly
+        if (Date.now() - f.lastMashTime > 300) {
+          f.meter = Math.max(0, f.meter - 0.4);
+        }
+        
+        // If meter full, launch the arrow!
+        if (f.meter >= 100) {
+          f.arrowPhase = 'flying';
+          f.arrowX = -100;
+          if (s.level.boss) {
+            f.arrowTargetX = s.level.boss.x + s.level.boss.width / 2;
+            f.arrowTargetY = s.level.boss.y + s.level.boss.height / 2;
+          }
+          f.arrowY = f.arrowTargetY;
+        }
+        
+        // Boss stays stunned, wobbling
+        if (s.level.boss) {
+          s.level.boss.velocityX = 0;
+          s.level.boss.velocityY = 0;
+          s.level.boss.attackCooldown = 999;
+        }
+      } else if (f.arrowPhase === 'flying') {
+        // Arrow flies from left side across screen toward boss
+        f.arrowX += 28;
+        // Trail particles
+        spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
+        spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
+        
+        if (f.arrowX >= f.arrowTargetX) {
+          f.arrowPhase = 'impact';
+          f.explosionTimer = 0;
+          f.screenShake = 20;
+        }
+      } else if (f.arrowPhase === 'impact') {
+        f.explosionTimer++;
+        f.screenShake = Math.max(0, 20 - f.explosionTimer);
+        
+        // Arrow continues through
+        f.arrowX += 20;
+        
+        if (f.explosionTimer === 1) {
+          // First impact - big flash particles
+          const bx = f.arrowTargetX;
+          const by = f.arrowTargetY;
+          for (let i = 0; i < 40; i++) {
+            s.particles.push({
+              x: bx, y: by,
+              vx: (Math.random() - 0.5) * 16,
+              vy: (Math.random() - 0.5) * 16,
+              life: 40 + Math.random() * 30,
+              maxLife: 70,
+              color: ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'][Math.floor(Math.random() * 4)],
+              size: 4 + Math.random() * 8,
+            });
+          }
+        }
+        
+        if (f.explosionTimer === 30) {
+          f.arrowPhase = 'exploding';
+          f.explosionTimer = 0;
+        }
+      } else if (f.arrowPhase === 'exploding') {
+        f.explosionTimer++;
+        f.screenShake = Math.max(0, 15 - f.explosionTimer * 0.5);
+        
+        // Multiple explosion waves
+        if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
+          const bx = f.arrowTargetX;
+          const by = f.arrowTargetY;
+          const wave = f.explosionTimer / 8;
+          for (let i = 0; i < 30; i++) {
+            const angle = (Math.PI * 2 / 30) * i;
+            const speed = 4 + wave * 2;
+            s.particles.push({
+              x: bx, y: by,
+              vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
+              vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 3,
+              life: 50 + Math.random() * 30,
+              maxLife: 80,
+              color: ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'][Math.floor(Math.random() * 5)],
+              size: 3 + Math.random() * 10,
+            });
+          }
+        }
+        
+        // Make boss disappear
+        if (s.level.boss) {
+          s.level.boss.isAlive = false;
+        }
+        
+        if (f.explosionTimer > 90) {
+          // Finisher complete!
+          f.active = false;
+          s.score += 2000;
+          s.gameState = 'victory';
+          setGameState('victory');
+          setScore(s.score);
+        }
+      }
+      
+      // Update particles during finisher
+      s.particles = s.particles.filter(pt => {
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.vy += 0.1;
+        pt.life--;
+        return pt.life > 0;
+      });
+      
+      return; // Skip normal update during finisher
+    }
     
     const p = s.player;
     const level = s.level;
@@ -398,12 +578,8 @@ export function useGameLoop() {
           b.health -= weapon.damage;
           spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
           if (b.health <= 0) {
-            b.isAlive = false;
-            s.score += 2000;
-            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 30);
-            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffdd00', 30);
-            s.gameState = 'victory';
-            setGameState('victory');
+            b.health = 0;
+            startFinisher();
           }
           if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
             b.phase = 3;
@@ -483,11 +659,8 @@ export function useGameLoop() {
             b.health -= proj.damage;
             spawnParticles(proj.x, proj.y, weapon.color, 10);
             if (b.health <= 0) {
-              b.isAlive = false;
-              s.score += 2000;
-              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 30);
-              s.gameState = 'victory';
-              setGameState('victory');
+              b.health = 0;
+              startFinisher();
             }
             if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
               b.phase = 3;
@@ -559,7 +732,7 @@ export function useGameLoop() {
 
     p.score = s.score;
     setScore(s.score);
-  }, [initLevel]);
+  }, [initLevel, startFinisher]);
 
   const drawChapterBG = (ctx: CanvasRenderingContext2D, camX: number, chapter: number) => {
     const t = Date.now();
@@ -758,6 +931,15 @@ export function useGameLoop() {
     const p = s.player;
     const camX = s.cameraX;
     const weapon = WEAPONS[p.currentWeapon];
+
+    // Screen shake from finisher
+    const f = s.finisher;
+    if (f.screenShake > 0) {
+      ctx.save();
+      const shakeX = (Math.random() - 0.5) * f.screenShake * 2;
+      const shakeY = (Math.random() - 0.5) * f.screenShake * 2;
+      ctx.translate(shakeX, shakeY);
+    }
 
     drawChapterBG(ctx, camX, s.level.chapter);
 
@@ -1081,6 +1263,188 @@ export function useGameLoop() {
         ctx.textAlign = 'center';
         ctx.fillText('→ Go right to proceed →', CANVAS_W / 2, CANVAS_H - 20);
       }
+    }
+
+    // === FINISHER RENDERING ===
+    if (f.active) {
+      // Darken screen edges
+      ctx.fillStyle = '#00000066';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      
+      if (f.arrowPhase === 'none') {
+        // MASH J prompt
+        const pulseScale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+        ctx.save();
+        ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 60);
+        ctx.scale(pulseScale, pulseScale);
+        ctx.fillStyle = '#ffdd00';
+        ctx.font = 'bold 36px MedievalSharp';
+        ctx.textAlign = 'center';
+        ctx.fillText('MASH J TO FINISH!', 0, 0);
+        ctx.restore();
+        
+        // Meter bar
+        const meterW = 400;
+        const meterH = 30;
+        const meterX = (CANVAS_W - meterW) / 2;
+        const meterY = CANVAS_H / 2 - 20;
+        
+        ctx.fillStyle = '#000000aa';
+        ctx.fillRect(meterX - 2, meterY - 2, meterW + 4, meterH + 4);
+        ctx.fillStyle = '#220000';
+        ctx.fillRect(meterX, meterY, meterW, meterH);
+        
+        // Fill with gradient
+        const fillW = meterW * (f.meter / 100);
+        const meterGrad = ctx.createLinearGradient(meterX, 0, meterX + fillW, 0);
+        meterGrad.addColorStop(0, '#ff4400');
+        meterGrad.addColorStop(0.5, '#ffaa00');
+        meterGrad.addColorStop(1, '#ffdd00');
+        ctx.fillStyle = meterGrad;
+        ctx.fillRect(meterX, meterY, fillW, meterH);
+        
+        // Meter glow
+        if (f.meter > 50) {
+          ctx.shadowColor = '#ffaa00';
+          ctx.shadowBlur = f.meter / 5;
+          ctx.strokeStyle = '#ffdd00';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(meterX, meterY, meterW, meterH);
+          ctx.shadowBlur = 0;
+        }
+        
+        ctx.strokeStyle = '#ffaa44';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(meterX, meterY, meterW, meterH);
+        
+        // Percentage text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px MedievalSharp';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.floor(f.meter)}%`, CANVAS_W / 2, meterY + 22);
+        
+        // Boss stunned indicator
+        if (s.level?.boss) {
+          const b = s.level.boss;
+          const bx = b.x - camX;
+          // Stun stars around boss
+          const t = Date.now() * 0.005;
+          ctx.fillStyle = '#ffdd00';
+          ctx.font = '20px serif';
+          ctx.textAlign = 'center';
+          for (let i = 0; i < 5; i++) {
+            const angle = t + (Math.PI * 2 / 5) * i;
+            const sx = bx + b.width / 2 + Math.cos(angle) * 50;
+            const sy = b.y - 10 + Math.sin(angle) * 15;
+            ctx.fillText('★', sx, sy);
+          }
+        }
+      } else if (f.arrowPhase === 'flying') {
+        // Draw the legendary arrow
+        const ax = f.arrowX - camX;
+        const ay = f.arrowY;
+        
+        ctx.save();
+        // Arrow glow
+        ctx.shadowColor = '#ffdd00';
+        ctx.shadowBlur = 30;
+        
+        // Arrow body
+        ctx.fillStyle = '#ffdd00';
+        ctx.beginPath();
+        ctx.moveTo(ax + 40, ay);       // tip
+        ctx.lineTo(ax, ay - 6);        // top
+        ctx.lineTo(ax + 8, ay);        // notch top
+        ctx.lineTo(ax, ay + 6);        // bottom
+        ctx.closePath();
+        ctx.fill();
+        
+        // Arrow shaft
+        ctx.fillStyle = '#aa8844';
+        ctx.fillRect(ax - 30, ay - 2, 30, 4);
+        
+        // Fletching
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(ax - 30, ay);
+        ctx.lineTo(ax - 40, ay - 8);
+        ctx.lineTo(ax - 25, ay);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(ax - 30, ay);
+        ctx.lineTo(ax - 40, ay + 8);
+        ctx.lineTo(ax - 25, ay);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        
+        // "FROM SUPER ZACHERY 1" text flash
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.8;
+        ctx.font = 'bold 18px MedievalSharp';
+        ctx.textAlign = 'center';
+        ctx.fillText("ZACHERY'S ARROW!", CANVAS_W / 2, CANVAS_H / 2 - 80);
+        ctx.globalAlpha = 1;
+      } else if (f.arrowPhase === 'impact' || f.arrowPhase === 'exploding') {
+        // White flash on impact
+        if (f.arrowPhase === 'impact' && f.explosionTimer < 5) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.8 - f.explosionTimer * 0.15})`;
+          ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        }
+        
+        // Draw arrow continuing through (if still visible)
+        if (f.arrowPhase === 'impact') {
+          const ax = f.arrowX - camX;
+          const ay = f.arrowY;
+          ctx.save();
+          ctx.shadowColor = '#ffdd00';
+          ctx.shadowBlur = 20;
+          ctx.fillStyle = '#ffdd00';
+          ctx.beginPath();
+          ctx.moveTo(ax + 40, ay);
+          ctx.lineTo(ax, ay - 6);
+          ctx.lineTo(ax + 8, ay);
+          ctx.lineTo(ax, ay + 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#aa8844';
+          ctx.fillRect(ax - 30, ay - 2, 30, 4);
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        }
+        
+        // Explosion rings
+        if (f.arrowPhase === 'exploding') {
+          const bx = f.arrowTargetX - camX;
+          const by = f.arrowTargetY;
+          const progress = f.explosionTimer / 90;
+          
+          // Expanding rings
+          for (let ring = 0; ring < 3; ring++) {
+            const ringProgress = Math.min(1, (progress * 3 - ring * 0.3));
+            if (ringProgress <= 0) continue;
+            ctx.strokeStyle = ring === 0 ? '#ff440088' : ring === 1 ? '#ffaa0066' : '#ffdd0044';
+            ctx.lineWidth = 4 - ring;
+            ctx.beginPath();
+            ctx.arc(bx, by, ringProgress * 200, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          // Central glow fading
+          ctx.globalAlpha = Math.max(0, 1 - progress);
+          ctx.fillStyle = '#ffdd00';
+          ctx.beginPath();
+          ctx.arc(bx, by, 30 * (1 - progress), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    // Restore screen shake transform
+    if (f.screenShake > 0) {
+      ctx.restore();
     }
   }, []);
 
