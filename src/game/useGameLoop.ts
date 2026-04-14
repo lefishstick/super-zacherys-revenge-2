@@ -761,6 +761,17 @@ export function useGameLoop() {
 
     drawChapterBG(ctx, camX, s.level.chapter);
 
+    // Chapter-themed platform colors
+    const ch = s.level.chapter;
+    const groundColors = ch === 1 ? ['#2a4a1a','#1a3310','#0a1a05','#44aa22']
+      : ch === 2 ? ['#1a1a3a','#151530','#0a0a1a','#4455aa']
+      : ch === 3 ? ['#3a2a1a','#2a1a10','#1a0f05','#aa6622']
+      : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
+    const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
+      : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
+      : ch === 3 ? ['#4a3a2a','#aa7733','#886622']
+      : ['#3a2020','#aa3333','#882222'];
+
     // Draw platforms
     for (const plat of s.level.platforms) {
       const px = plat.x - camX;
@@ -768,23 +779,23 @@ export function useGameLoop() {
       
       if (plat.height > 50) {
         const groundGrad = ctx.createLinearGradient(0, plat.y, 0, plat.y + plat.height);
-        groundGrad.addColorStop(0, '#2a4a1a');
-        groundGrad.addColorStop(0.1, '#1a3310');
-        groundGrad.addColorStop(1, '#0a1a05');
+        groundGrad.addColorStop(0, groundColors[0]);
+        groundGrad.addColorStop(0.1, groundColors[1]);
+        groundGrad.addColorStop(1, groundColors[2]);
         ctx.fillStyle = groundGrad;
         ctx.fillRect(px, plat.y, plat.width, plat.height);
-        ctx.strokeStyle = '#44aa22';
+        ctx.strokeStyle = groundColors[3];
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(px, plat.y);
         ctx.lineTo(px + plat.width, plat.y);
         ctx.stroke();
       } else {
-        ctx.fillStyle = '#3a2a1a';
+        ctx.fillStyle = platColors[0];
         ctx.fillRect(px, plat.y, plat.width, plat.height);
-        ctx.fillStyle = '#2a5a15';
+        ctx.fillStyle = platColors[1];
         ctx.fillRect(px, plat.y, plat.width, 4);
-        ctx.strokeStyle = '#227711';
+        ctx.strokeStyle = platColors[2];
         ctx.lineWidth = 1;
         for (let v = px + 10; v < px + plat.width; v += 30) {
           ctx.beginPath();
