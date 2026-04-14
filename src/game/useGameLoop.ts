@@ -570,12 +570,8 @@ export function useGameLoop() {
           b.health -= weapon.damage;
           spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
           if (b.health <= 0) {
-            b.isAlive = false;
-            s.score += 2000;
-            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 30);
-            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffdd00', 30);
-            s.gameState = 'victory';
-            setGameState('victory');
+            b.health = 0;
+            startFinisher();
           }
           if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
             b.phase = 3;
