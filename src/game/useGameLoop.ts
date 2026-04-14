@@ -97,9 +97,16 @@ export function useGameLoop() {
     };
   }, []);
 
+  const resetFinisher = () => {
+    const f = stateRef.current.finisher;
+    f.active = false; f.meter = 0; f.mashCount = 0; f.arrowPhase = 'none';
+    f.explosionTimer = 0; f.screenShake = 0; f.explosionParticlesSpawned = false;
+  };
+
   const beginLevel = useCallback((levelNum: number) => {
     stateRef.current.gameState = 'playing';
     stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    resetFinisher();
     setCurrentLevel(levelNum);
     initLevel(levelNum);
     setGameState('playing');
