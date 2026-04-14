@@ -846,6 +846,37 @@ export function useGameLoop() {
       ctx.fillText(wDef.name, wpx + wp.width / 2, floatY - 10);
     }
 
+    // Draw health pickups
+    for (const hp of s.level.healthPickups) {
+      if (hp.collected) continue;
+      const hpx = hp.x - camX;
+      if (hpx + hp.width < -50 || hpx > CANVAS_W + 50) continue;
+      const t = Date.now() * 0.003;
+      const floatY = hp.y + Math.sin(t + hp.x) * 4;
+      
+      // Green glow
+      ctx.save();
+      ctx.shadowColor = '#44ff44';
+      ctx.shadowBlur = 12 + Math.sin(t * 2) * 4;
+      // Heart shape
+      ctx.fillStyle = '#44ff44';
+      const cx = hpx + hp.width / 2;
+      const cy = floatY + hp.height / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 6);
+      ctx.bezierCurveTo(cx - 8, cy - 2, cx - 12, cy - 8, cx, cy - 4);
+      ctx.bezierCurveTo(cx + 12, cy - 8, cx + 8, cy - 2, cx, cy + 6);
+      ctx.fill();
+      // + symbol
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(cx - 1, cy - 5, 2, 8);
+      ctx.fillRect(cx - 4, cy - 2, 8, 2);
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
     // Draw enemies
     for (const e of s.level.enemies) {
       if (!e.isAlive) continue;
