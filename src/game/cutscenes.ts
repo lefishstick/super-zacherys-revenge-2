@@ -24,6 +24,15 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
+  chapter1_mid: {
+    id: 'chapter1_mid',
+    lines: [
+      { speaker: 'narrator', text: 'Deeper into the withered entrance, the trees turn half-metal. Old machines lie shattered along the path.' },
+      { speaker: 'zachery', text: 'These machines… someone built them here on purpose.' },
+      { speaker: 'narrator', text: 'Mechanical roots pulse faintly beneath the soil, as if breathing.' },
+    ],
+  },
+
   chapter1_end: {
     id: 'chapter1_end',
     lines: [
@@ -41,6 +50,7 @@ export const CUTSCENES: Record<string, Cutscene> = {
     lines: [
       { speaker: 'narrator', text: 'A heavy fog rolls in, glitching in and out of existence. Something is distorting reality itself.' },
       { speaker: 'narrator', text: 'Cloaked Onioids appear from nowhere. Exploding MechEggs litter the path.' },
+      { speaker: 'zachery', text: 'I can barely see. Have to rely on instinct.' },
     ],
   },
 
@@ -54,6 +64,15 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
+  chapter2_end: {
+    id: 'chapter2_end',
+    lines: [
+      { speaker: 'narrator', text: 'The fog thins. Ahead, the ground cracks open revealing metal beneath the earth.' },
+      { speaker: 'zachery', text: 'It\'s not just the surface… the corruption goes underground.' },
+      { speaker: 'narrator', text: 'A cold wind rises from the depths. The real darkness lies below.' },
+    ],
+  },
+
   chapter3_start: {
     id: 'chapter3_start',
     chapterName: 'Chapter 3: The Iron Roots',
@@ -61,6 +80,15 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'narrator', text: 'The forest gives way to underground tunnels of metal roots. The machine has taken over completely.' },
       { speaker: 'narrator', text: 'Armored MechEggs and Heavy Onioid brutes guard every passage.' },
       { speaker: 'zachery', text: 'It goes deeper than I thought. This isn\'t just corruption — it\'s alive.' },
+    ],
+  },
+
+  chapter3_mid: {
+    id: 'chapter3_mid',
+    lines: [
+      { speaker: 'narrator', text: 'Pulsing mechanical veins line the walls, throbbing with a sickly light.' },
+      { speaker: 'zachery', text: 'These veins… they\'re all connected to something deeper.' },
+      { speaker: 'narrator', text: 'The ground trembles. Whatever lives below is aware of Zachery\'s presence.' },
     ],
   },
 
@@ -78,6 +106,15 @@ export const CUTSCENES: Record<string, Cutscene> = {
     chapterName: 'Chapter 4: The Rotting Heart',
     lines: [
       { speaker: 'narrator', text: 'Flesh and metal fuse together in grotesque harmony. A heartbeat echoes through the chamber.' },
+      { speaker: 'narrator', text: 'Corrupted hybrids — fused egg and onion monstrosities — block the way.' },
+      { speaker: 'zachery', text: 'Almost there. I can feel it pulsing.' },
+    ],
+  },
+
+  chapter4_boss: {
+    id: 'chapter4_boss',
+    chapterName: 'The Rotting Heart — Final Battle',
+    lines: [
       { speaker: 'narrator', text: 'The ground shakes. Something rises from the corrupted earth.' },
       { speaker: 'narrator', text: 'The Rotten Colossus emerges — massive, decayed, mechanical-organic.' },
       { speaker: 'colossus', text: '...Zachery…', style: 'distorted' },
@@ -122,12 +159,16 @@ export const CUTSCENES: Record<string, Cutscene> = {
   },
 };
 
-// Map of which cutscene plays before/after each level
+// Map of which cutscene plays before each level
 export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   1: ['intro', 'chapter1_start'],
-  2: ['chapter1_end', 'chapter2_start'],
-  3: ['chapter2_mid', 'chapter3_start'],
-  4: ['chapter3_end', 'chapter4_start'],
+  2: ['chapter1_mid'],
+  3: ['chapter1_end', 'chapter2_start'],
+  4: ['chapter2_mid'],
+  5: ['chapter2_end', 'chapter3_start'],
+  6: ['chapter3_mid'],
+  7: ['chapter3_end', 'chapter4_start'],
+  8: ['chapter4_boss'],
 };
 
 export const VICTORY_CUTSCENE = 'ending';
