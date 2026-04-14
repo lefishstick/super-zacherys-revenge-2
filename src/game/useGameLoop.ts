@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS } from './types';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -12,8 +12,6 @@ const JUMP_FORCE = -13;
 const MOVE_SPEED = 4;
 const CANVAS_W = 960;
 const CANVAS_H = 600;
-const ATTACK_RANGE = 70;
-const ATTACK_DAMAGE = 1;
 
 export function useGameLoop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -78,6 +76,8 @@ export function useGameLoop() {
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
+      currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
+      weapons: s.player?.weapons ?? ['forest_blade'],
     };
   }, []);
 
@@ -112,19 +112,27 @@ export function useGameLoop() {
     const p = s.player;
     const level = s.level;
     const keys = s.keys;
+    const weapon = WEAPONS[p.currentWeapon];
+
+    // Weapon switching with number keys
+    for (let i = 0; i < p.weapons.length; i++) {
+      if (keys.has(`${i + 1}`)) {
+        p.currentWeapon = p.weapons[i];
+      }
+    }
 
     // Player movement
-    if (keys.has('ArrowLeft') || keys.has('a')) {
+    if (keys.has('arrowleft') || keys.has('a')) {
       p.velocityX = -MOVE_SPEED;
       p.facingRight = false;
-    } else if (keys.has('ArrowRight') || keys.has('d')) {
+    } else if (keys.has('arrowright') || keys.has('d')) {
       p.velocityX = MOVE_SPEED;
       p.facingRight = true;
     } else {
       p.velocityX *= 0.8;
     }
 
-    if ((keys.has('ArrowUp') || keys.has('w') || keys.has(' ')) && p.onGround) {
+    if ((keys.has('arrowup') || keys.has('w') || keys.has(' ')) && p.onGround) {
       p.velocityY = JUMP_FORCE;
       p.onGround = false;
       p.isJumping = true;
@@ -134,12 +142,36 @@ export function useGameLoop() {
     if (keys.has('z') || keys.has('j')) {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
-        p.attackTimer = 20;
-        spawnParticles(
-          p.x + (p.facingRight ? p.width + 20 : -20),
-          p.y + p.height / 2,
-          '#aaff44', 5
-        );
+        p.attackTimer = weapon.speed;
+        
+        if (weapon.isRanged && weapon.projectileSpeed) {
+          // Fire projectile
+          s.projectiles.push({
+            x: p.x + (p.facingRight ? p.width : -15),
+            y: p.y + p.height / 2 - 7,
+            width: 15, height: 15,
+            velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
+            velocityY: 0,
+            isPlayerProjectile: true,
+            damage: weapon.damage,
+            lifetime: 80,
+          });
+          spawnParticles(
+            p.x + (p.facingRight ? p.width : 0),
+            p.y + p.height / 2,
+            weapon.color, 6
+          );
+        } else if (weapon.aoeRadius) {
+          // AOE attack
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+        } else {
+          // Melee attack
+          spawnParticles(
+            p.x + (p.facingRight ? p.width + 20 : -20),
+            p.y + p.height / 2,
+            weapon.color, 5
+          );
+        }
       }
     }
 
@@ -172,15 +204,36 @@ export function useGameLoop() {
     if (p.attackTimer <= 0) p.isAttacking = false;
     if (p.invincibleTimer > 0) p.invincibleTimer--;
 
-    // Attack hitbox
-    const atkX = p.facingRight ? p.x + p.width : p.x - ATTACK_RANGE;
+    // Weapon pickup collision
+    for (const wp of level.weaponPickups) {
+      if (wp.collected) continue;
+      if (
+        p.x < wp.x + wp.width && p.x + p.width > wp.x &&
+        p.y < wp.y + wp.height && p.y + p.height > wp.y
+      ) {
+        wp.collected = true;
+        if (!p.weapons.includes(wp.weapon)) {
+          p.weapons.push(wp.weapon);
+        }
+        p.currentWeapon = wp.weapon;
+        spawnParticles(wp.x + wp.width / 2, wp.y + wp.height / 2, WEAPONS[wp.weapon].color, 25);
+        // Trigger weapon cutscene
+        window.dispatchEvent(new CustomEvent('weapon_pickup', { detail: wp.weapon }));
+      }
+    }
+
+    // Attack hitbox calculations
+    const atkRange = weapon.range;
+    const atkX = p.facingRight ? p.x + p.width : p.x - atkRange;
     const atkY = p.y;
+    const isAOE = !!weapon.aoeRadius;
+    const aoeCenterX = p.x + p.width / 2;
+    const aoeCenterY = p.y + p.height / 2;
 
     // Update enemies
     for (const e of level.enemies) {
       if (!e.isAlive) continue;
       
-      // Simple AI: patrol and chase player
       const distToPlayer = p.x - e.x;
       if (Math.abs(distToPlayer) < 300) {
         e.direction = distToPlayer > 0 ? 1 : -1;
@@ -198,7 +251,6 @@ export function useGameLoop() {
       e.x += e.velocityX;
       e.y += e.velocityY;
 
-      // Enemy platform collision
       for (const plat of level.platforms) {
         if (
           e.x + e.width > plat.x && e.x < plat.x + plat.width &&
@@ -210,16 +262,22 @@ export function useGameLoop() {
         }
       }
 
-      // Player attack hits enemy
-      if (p.isAttacking && p.attackTimer > 15) {
-        if (
-          atkX < e.x + e.width && atkX + ATTACK_RANGE > e.x &&
-          atkY < e.y + e.height && atkY + p.height > e.y
-        ) {
-          e.health -= ATTACK_DAMAGE;
+      // Player melee/AOE attack hits enemy
+      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        let hit = false;
+        if (isAOE) {
+          const dx = (e.x + e.width / 2) - aoeCenterX;
+          const dy = (e.y + e.height / 2) - aoeCenterY;
+          hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
+        } else {
+          hit = atkX < e.x + e.width && atkX + atkRange > e.x &&
+                atkY < e.y + e.height && atkY + p.height > e.y;
+        }
+        if (hit) {
+          e.health -= weapon.damage;
           e.velocityX = (p.facingRight ? 1 : -1) * 8;
           e.velocityY = -3;
-          spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6644', 8);
+          spawnParticles(e.x + e.width / 2, e.y + e.height / 2, weapon.color, 8);
           if (e.health <= 0) {
             e.isAlive = false;
             s.score += e.type === 'onion' ? 300 : 200;
@@ -285,7 +343,6 @@ export function useGameLoop() {
       b.x += b.velocityX;
       b.y += b.velocityY;
 
-      // Boss platform collision
       for (const plat of level.platforms) {
         if (
           b.x + b.width > plat.x && b.x < plat.x + plat.width &&
@@ -304,14 +361,20 @@ export function useGameLoop() {
       if (b.x < 0) { b.x = 0; b.velocityX *= -1; }
       if (b.x > level.width - b.width) { b.x = level.width - b.width; b.velocityX *= -1; }
 
-      // Player attack hits boss
-      if (p.isAttacking && p.attackTimer > 15) {
-        if (
-          atkX < b.x + b.width && atkX + ATTACK_RANGE > b.x &&
-          atkY < b.y + b.height && atkY + p.height > b.y
-        ) {
-          b.health -= ATTACK_DAMAGE;
-          spawnParticles(atkX + ATTACK_RANGE / 2, atkY + p.height / 2, '#ffaa00', 10);
+      // Player melee/AOE attack hits boss
+      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        let hit = false;
+        if (isAOE) {
+          const dx = (b.x + b.width / 2) - aoeCenterX;
+          const dy = (b.y + b.height / 2) - aoeCenterY;
+          hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
+        } else {
+          hit = atkX < b.x + b.width && atkX + atkRange > b.x &&
+                atkY < b.y + b.height && atkY + p.height > b.y;
+        }
+        if (hit) {
+          b.health -= weapon.damage;
+          spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
           if (b.health <= 0) {
             b.isAlive = false;
             s.score += 2000;
@@ -320,7 +383,6 @@ export function useGameLoop() {
             s.gameState = 'victory';
             setGameState('victory');
           }
-          // Phase transitions with cutscenes
           if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
             b.phase = 3;
             if (!s.bossPhaseTriggered[3]) {
@@ -363,20 +425,74 @@ export function useGameLoop() {
       proj.lifetime--;
       if (proj.lifetime <= 0) return false;
 
-      // Hit player
-      if (!proj.isPlayerProjectile && p.invincibleTimer <= 0) {
-        if (
-          p.x < proj.x + proj.width && p.x + p.width > proj.x &&
-          p.y < proj.y + proj.height && p.y + p.height > proj.y
-        ) {
-          p.health -= proj.damage;
-          p.invincibleTimer = 60;
-          spawnParticles(proj.x, proj.y, '#ff0000', 8);
-          if (p.health <= 0) {
-            s.gameState = 'gameover';
-            setGameState('gameover');
+      if (proj.isPlayerProjectile) {
+        // Player projectile hits enemies
+        for (const e of level.enemies) {
+          if (!e.isAlive) continue;
+          if (
+            proj.x < e.x + e.width && proj.x + proj.width > e.x &&
+            proj.y < e.y + e.height && proj.y + proj.height > e.y
+          ) {
+            e.health -= proj.damage;
+            e.velocityX = proj.velocityX > 0 ? 5 : -5;
+            e.velocityY = -3;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, weapon.color, 8);
+            if (e.health <= 0) {
+              e.isAlive = false;
+              s.score += e.type === 'onion' ? 300 : 200;
+              spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+            }
+            return false;
           }
-          return false;
+        }
+        // Player projectile hits boss
+        if (level.boss?.isAlive) {
+          const b = level.boss;
+          if (
+            proj.x < b.x + b.width && proj.x + proj.width > b.x &&
+            proj.y < b.y + b.height && proj.y + proj.height > b.y
+          ) {
+            b.health -= proj.damage;
+            spawnParticles(proj.x, proj.y, weapon.color, 10);
+            if (b.health <= 0) {
+              b.isAlive = false;
+              s.score += 2000;
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 30);
+              s.gameState = 'victory';
+              setGameState('victory');
+            }
+            if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+              b.phase = 3;
+              if (!s.bossPhaseTriggered[3]) {
+                s.bossPhaseTriggered[3] = true;
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+              }
+            } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+              b.phase = 2;
+              if (!s.bossPhaseTriggered[2]) {
+                s.bossPhaseTriggered[2] = true;
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+              }
+            }
+            return false;
+          }
+        }
+      } else {
+        // Enemy projectile hits player
+        if (p.invincibleTimer <= 0) {
+          if (
+            p.x < proj.x + proj.width && p.x + p.width > proj.x &&
+            p.y < proj.y + proj.height && p.y + proj.height > proj.y
+          ) {
+            p.health -= proj.damage;
+            p.invincibleTimer = 60;
+            spawnParticles(proj.x, proj.y, '#ff0000', 8);
+            if (p.health <= 0) {
+              s.gameState = 'gameover';
+              setGameState('gameover');
+            }
+            return false;
+          }
         }
       }
       return true;
@@ -418,7 +534,6 @@ export function useGameLoop() {
   }, [initLevel]);
 
   const drawForestBG = (ctx: CanvasRenderingContext2D, camX: number) => {
-    // Sky gradient
     const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     skyGrad.addColorStop(0, '#0a1a0a');
     skyGrad.addColorStop(0.5, '#0d2810');
@@ -426,7 +541,6 @@ export function useGameLoop() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Moon
     ctx.fillStyle = '#ccddaa';
     ctx.globalAlpha = 0.3;
     ctx.beginPath();
@@ -434,7 +548,6 @@ export function useGameLoop() {
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Background trees (parallax)
     ctx.fillStyle = '#0a1f0a';
     for (let i = 0; i < 20; i++) {
       const tx = i * 200 - (camX * 0.2) % 400 - 200;
@@ -446,7 +559,6 @@ export function useGameLoop() {
       ctx.fill();
     }
 
-    // Mid trees
     ctx.fillStyle = '#0f2a0f';
     for (let i = 0; i < 15; i++) {
       const tx = i * 160 - (camX * 0.4) % 320 - 160;
@@ -458,7 +570,6 @@ export function useGameLoop() {
       ctx.fill();
     }
 
-    // Fog particles
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#88ff88';
     for (let i = 0; i < 8; i++) {
@@ -482,6 +593,7 @@ export function useGameLoop() {
 
     const p = s.player;
     const camX = s.cameraX;
+    const weapon = WEAPONS[p.currentWeapon];
 
     drawForestBG(ctx, camX);
 
@@ -491,14 +603,12 @@ export function useGameLoop() {
       if (px + plat.width < -50 || px > CANVAS_W + 50) continue;
       
       if (plat.height > 50) {
-        // Ground
         const groundGrad = ctx.createLinearGradient(0, plat.y, 0, plat.y + plat.height);
         groundGrad.addColorStop(0, '#2a4a1a');
         groundGrad.addColorStop(0.1, '#1a3310');
         groundGrad.addColorStop(1, '#0a1a05');
         ctx.fillStyle = groundGrad;
         ctx.fillRect(px, plat.y, plat.width, plat.height);
-        // Grass line
         ctx.strokeStyle = '#44aa22';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -506,12 +616,10 @@ export function useGameLoop() {
         ctx.lineTo(px + plat.width, plat.y);
         ctx.stroke();
       } else {
-        // Floating platform
         ctx.fillStyle = '#3a2a1a';
         ctx.fillRect(px, plat.y, plat.width, plat.height);
         ctx.fillStyle = '#2a5a15';
         ctx.fillRect(px, plat.y, plat.width, 4);
-        // Vines
         ctx.strokeStyle = '#227711';
         ctx.lineWidth = 1;
         for (let v = px + 10; v < px + plat.width; v += 30) {
@@ -521,6 +629,46 @@ export function useGameLoop() {
           ctx.stroke();
         }
       }
+    }
+
+    // Draw weapon pickups
+    for (const wp of s.level.weaponPickups) {
+      if (wp.collected) continue;
+      const wpx = wp.x - camX;
+      if (wpx + wp.width < -50 || wpx > CANVAS_W + 50) continue;
+      const wDef = WEAPONS[wp.weapon];
+      const t = Date.now() * 0.003;
+      const floatY = wp.y + Math.sin(t) * 5;
+      
+      // Glow
+      ctx.save();
+      ctx.shadowColor = wDef.glowColor;
+      ctx.shadowBlur = 15 + Math.sin(t * 2) * 5;
+      ctx.fillStyle = wDef.color;
+      ctx.beginPath();
+      ctx.arc(wpx + wp.width / 2, floatY + wp.height / 2, wp.width / 2 + 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner diamond shape
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      const cx = wpx + wp.width / 2;
+      const cy = floatY + wp.height / 2;
+      ctx.moveTo(cx, cy - 8);
+      ctx.lineTo(cx + 6, cy);
+      ctx.lineTo(cx, cy + 8);
+      ctx.lineTo(cx - 6, cy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      
+      // Label
+      ctx.fillStyle = wDef.color;
+      ctx.font = '10px MedievalSharp';
+      ctx.textAlign = 'center';
+      ctx.fillText(wDef.name, wpx + wp.width / 2, floatY - 10);
     }
 
     // Draw enemies
@@ -542,7 +690,6 @@ export function useGameLoop() {
         ctx.restore();
       }
 
-      // Health bar
       if (e.health < e.maxHealth) {
         ctx.fillStyle = '#330000';
         ctx.fillRect(ex, e.y - 10, e.width, 5);
@@ -558,7 +705,6 @@ export function useGameLoop() {
       const img = s.images.boss;
       if (img?.complete) {
         ctx.save();
-        // Boss glow
         ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
         ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
         if (b.direction > 0) {
@@ -572,7 +718,6 @@ export function useGameLoop() {
         ctx.restore();
       }
 
-      // Boss health bar
       ctx.fillStyle = '#330000';
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
       ctx.fillStyle = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900';
@@ -606,18 +751,47 @@ export function useGameLoop() {
 
     // Attack effect
     if (p.isAttacking) {
-      const ax = p.facingRight ? px + p.width : px - ATTACK_RANGE;
-      ctx.fillStyle = 'rgba(170, 255, 68, 0.4)';
-      ctx.beginPath();
-      ctx.arc(ax + ATTACK_RANGE / 2, p.y + p.height / 2, 25, 0, Math.PI * 2);
-      ctx.fill();
+      if (weapon.aoeRadius) {
+        // AOE ring
+        ctx.strokeStyle = weapon.color;
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.5;
+        const progress = 1 - (p.attackTimer / weapon.speed);
+        ctx.beginPath();
+        ctx.arc(px + p.width / 2, p.y + p.height / 2, weapon.aoeRadius * progress, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (!weapon.isRanged) {
+        // Melee slash
+        const ax = p.facingRight ? px + p.width : px - weapon.range;
+        ctx.fillStyle = weapon.color + '66';
+        if (weapon.id === 'vine_whip') {
+          // Whip arc
+          ctx.strokeStyle = weapon.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const startX = p.facingRight ? px + p.width : px;
+          ctx.moveTo(startX, p.y + p.height / 2);
+          const endX = p.facingRight ? px + p.width + weapon.range : px - weapon.range;
+          ctx.quadraticCurveTo(
+            (startX + endX) / 2, p.y + p.height / 2 - 30,
+            endX, p.y + p.height / 2 + 10
+          );
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.arc(ax + weapon.range / 2, p.y + p.height / 2, weapon.range / 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Draw projectiles
     for (const proj of s.projectiles) {
       const ppx = proj.x - camX;
-      ctx.fillStyle = proj.isPlayerProjectile ? '#aaff44' : '#ff4400';
-      ctx.shadowColor = proj.isPlayerProjectile ? '#aaff44' : '#ff4400';
+      const projColor = proj.isPlayerProjectile ? weapon.color : '#ff4400';
+      ctx.fillStyle = projColor;
+      ctx.shadowColor = projColor;
       ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(ppx + proj.width / 2, proj.y + proj.height / 2, proj.width / 2, 0, Math.PI * 2);
@@ -635,7 +809,6 @@ export function useGameLoop() {
     ctx.globalAlpha = 1;
 
     // HUD
-    // Health
     ctx.fillStyle = '#000000aa';
     ctx.fillRect(10, 10, 204, 24);
     ctx.fillStyle = '#330000';
@@ -671,7 +844,29 @@ export function useGameLoop() {
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
-    // Direction indicator if not boss level
+    // Weapon HUD (bottom left)
+    ctx.fillStyle = '#000000aa';
+    ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+    ctx.strokeStyle = weapon.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+    
+    // Current weapon name
+    ctx.fillStyle = weapon.color;
+    ctx.font = 'bold 14px MedievalSharp';
+    ctx.textAlign = 'left';
+    ctx.fillText(`⚔ ${weapon.name}`, 20, CANVAS_H - 38);
+    
+    // Weapon slots
+    ctx.font = '11px MedievalSharp';
+    ctx.fillStyle = '#aaaaaa';
+    const slotText = p.weapons.map((w, i) => {
+      const isActive = w === p.currentWeapon;
+      return `[${i + 1}]${isActive ? '►' : ' '}${WEAPONS[w].name.substring(0, 8)}`;
+    }).join('  ');
+    ctx.fillText(slotText.length > 35 ? slotText.substring(0, 35) + '…' : slotText, 20, CANVAS_H - 18);
+
+    // Direction indicator
     if (!s.level.isBossLevel) {
       const allDead = s.level.enemies.every(e => !e.isAlive);
       if (allDead) {
