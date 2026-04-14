@@ -1,4 +1,4 @@
-import { Level, Enemy, Boss, WeaponPickup } from './types';
+import { Level, Enemy, Boss, WeaponPickup, HealthPickup } from './types';
 
 const makeEnemy = (x: number, y: number, type: 'onion' | 'egg', healthMult = 1): Enemy => ({
   x, y, width: 60, height: 70,
@@ -20,6 +20,10 @@ const makeWeaponPickup = (x: number, y: number, weapon: WeaponPickup['weapon']):
   x, y, width: 30, height: 30, weapon, collected: false,
 });
 
+const makeHealthPickup = (x: number, y: number, healAmount = 3): HealthPickup => ({
+  x, y, width: 24, height: 24, healAmount, collected: false,
+});
+
 export const TOTAL_LEVELS = 8;
 
 export const createLevel = (levelNum: number): Level => {
@@ -28,7 +32,7 @@ export const createLevel = (levelNum: number): Level => {
   switch (levelNum) {
     case 1: {
       return {
-        width: 2800, groundY, isBossLevel: false,
+        width: 2800, groundY, isBossLevel: false, chapter: 1,
         platforms: [
           { x: 0, y: groundY, width: 2800, height: 100 },
           { x: 350, y: 400, width: 140, height: 20 },
@@ -48,13 +52,17 @@ export const createLevel = (levelNum: number): Level => {
           makeEnemy(2200, groundY - 70, 'onion'),
         ],
         boss: null,
-        weaponPickups: [], // Start with Forest Blade by default
+        weaponPickups: [],
+        healthPickups: [
+          makeHealthPickup(1000, groundY - 30),
+          makeHealthPickup(2000, groundY - 30),
+        ],
       };
     }
 
     case 2: {
       return {
-        width: 3200, groundY, isBossLevel: false,
+        width: 3200, groundY, isBossLevel: false, chapter: 1,
         platforms: [
           { x: 0, y: groundY, width: 3200, height: 100 },
           { x: 280, y: 390, width: 180, height: 20 },
@@ -80,12 +88,17 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [makeWeaponPickup(1600, groundY - 40, 'vine_whip')],
+        healthPickups: [
+          makeHealthPickup(800, groundY - 30),
+          makeHealthPickup(1800, groundY - 30),
+          makeHealthPickup(2600, groundY - 30),
+        ],
       };
     }
 
     case 3: {
       return {
-        width: 3000, groundY, isBossLevel: false,
+        width: 3000, groundY, isBossLevel: false, chapter: 2,
         platforms: [
           { x: 0, y: groundY, width: 3000, height: 100 },
           { x: 350, y: 400, width: 100, height: 20 },
@@ -113,12 +126,17 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [],
+        healthPickups: [
+          makeHealthPickup(600, groundY - 30),
+          makeHealthPickup(1400, groundY - 30),
+          makeHealthPickup(2300, groundY - 30),
+        ],
       };
     }
 
     case 4: {
       return {
-        width: 3500, groundY, isBossLevel: false,
+        width: 3500, groundY, isBossLevel: false, chapter: 2,
         platforms: [
           { x: 0, y: groundY, width: 3500, height: 100 },
           { x: 300, y: 420, width: 120, height: 20 },
@@ -148,12 +166,18 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [makeWeaponPickup(1650, 230, 'static_bolt')],
+        healthPickups: [
+          makeHealthPickup(900, groundY - 30),
+          makeHealthPickup(1600, groundY - 30),
+          makeHealthPickup(2400, groundY - 30),
+          makeHealthPickup(3000, groundY - 30),
+        ],
       };
     }
 
     case 5: {
       return {
-        width: 3800, groundY, isBossLevel: false,
+        width: 3800, groundY, isBossLevel: false, chapter: 3,
         platforms: [
           { x: 0, y: groundY, width: 3800, height: 100 },
           { x: 300, y: 380, width: 250, height: 20 },
@@ -179,12 +203,18 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [],
+        healthPickups: [
+          makeHealthPickup(600, groundY - 30),
+          makeHealthPickup(1300, groundY - 30),
+          makeHealthPickup(2000, groundY - 30),
+          makeHealthPickup(2800, groundY - 30),
+        ],
       };
     }
 
     case 6: {
       return {
-        width: 4000, groundY, isBossLevel: false,
+        width: 4000, groundY, isBossLevel: false, chapter: 3,
         platforms: [
           { x: 0, y: groundY, width: 4000, height: 100 },
           { x: 250, y: 400, width: 140, height: 20 },
@@ -216,12 +246,19 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [makeWeaponPickup(2100, groundY - 40, 'iron_fist')],
+        healthPickups: [
+          makeHealthPickup(500, groundY - 30),
+          makeHealthPickup(1200, groundY - 30),
+          makeHealthPickup(1900, groundY - 30),
+          makeHealthPickup(2800, groundY - 30),
+          makeHealthPickup(3500, groundY - 30),
+        ],
       };
     }
 
     case 7: {
       return {
-        width: 3500, groundY, isBossLevel: false,
+        width: 3500, groundY, isBossLevel: false, chapter: 4,
         platforms: [
           { x: 0, y: groundY, width: 3500, height: 100 },
           { x: 300, y: 390, width: 130, height: 20 },
@@ -251,13 +288,20 @@ export const createLevel = (levelNum: number): Level => {
         ],
         boss: null,
         weaponPickups: [makeWeaponPickup(1650, groundY - 40, 'corruption_purge')],
+        healthPickups: [
+          makeHealthPickup(500, groundY - 30),
+          makeHealthPickup(1100, groundY - 30),
+          makeHealthPickup(1700, groundY - 30),
+          makeHealthPickup(2300, groundY - 30),
+          makeHealthPickup(3100, groundY - 30),
+        ],
       };
     }
 
     case 8:
     default: {
       return {
-        width: 1200, groundY, isBossLevel: true,
+        width: 1200, groundY, isBossLevel: true, chapter: 4,
         platforms: [
           { x: 0, y: groundY, width: 1200, height: 100 },
           { x: 150, y: 380, width: 120, height: 20 },
@@ -269,6 +313,10 @@ export const createLevel = (levelNum: number): Level => {
         enemies: [],
         boss: makeBoss(900, groundY - 150),
         weaponPickups: [],
+        healthPickups: [
+          makeHealthPickup(200, groundY - 30, 5),
+          makeHealthPickup(550, groundY - 30, 5),
+        ],
       };
     }
   }
