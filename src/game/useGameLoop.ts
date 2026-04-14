@@ -122,6 +122,7 @@ export function useGameLoop() {
     stateRef.current.gameState = 'playing';
     stateRef.current.player = null;
     stateRef.current.bossPhaseTriggered = { 2: false, 3: false };
+    resetFinisher();
     setScore(0);
     setCurrentLevel(1);
     initLevel(1);
