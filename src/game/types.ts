@@ -86,8 +86,9 @@ export interface Boss extends Entity {
   isAlive: boolean;
   phase: number;
   attackCooldown: number;
-  attackType: 'charge' | 'shoot' | 'stomp' | 'idle';
+  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn';
   direction: number;
+  bossType?: 'colossus' | 'rotten_core';
 }
 
 export interface Projectile extends Entity {

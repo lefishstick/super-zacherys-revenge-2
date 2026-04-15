@@ -147,16 +147,77 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
+  colossus_ending: {
+    id: 'colossus_ending',
+    lines: [
+      { speaker: 'narrator', text: 'Zachery\'s ancient arrow pierces through the Rotten Colossus.' },
+      { speaker: 'narrator', text: 'The Colossus detonates in a cataclysmic explosion.' },
+      { speaker: 'narrator', text: 'But the ground still trembles. Something deeper still lives.' },
+      { speaker: 'zachery', text: '...It\'s not over. The source is still down there.', style: 'whisper' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 5: THE ROTTEN CORE
+  // ═══════════════════════════════════════════
+
+  chapter5_start: {
+    id: 'chapter5_start',
+    chapterName: 'Chapter 5: The Rotten Core',
+    lines: [
+      { speaker: 'narrator', text: 'Zachery descends into the deepest chamber of the corrupted forest.' },
+      { speaker: 'narrator', text: 'The air is thick with toxic energy. Roots of metal and flesh intertwine everywhere.' },
+      { speaker: 'narrator', text: 'And then… silence. An unnatural, absolute silence.' },
+      { speaker: 'zachery', text: 'This is where it all started...', style: 'whisper' },
+    ],
+  },
+
+  rotten_core_intro: {
+    id: 'rotten_core_intro',
+    chapterName: 'The Heart Tree Awakens',
+    lines: [
+      { speaker: 'narrator', text: 'The ground begins to tremble. Roots burst through the earth around Zachery.' },
+      { speaker: 'narrator', text: 'What he thought was terrain… begins to MOVE.' },
+      { speaker: 'narrator', text: 'Eyes ignite with sickly green light. Mechanical parts grind to life.' },
+      { speaker: 'narrator', text: 'The Heart Tree — once the source of all life in this forest — has become something else.' },
+      { speaker: 'voice', text: 'YOU... COME TO DESTROY... WHAT YOU CREATED?', style: 'distorted' },
+      { speaker: 'zachery', text: 'I came to end this. All of it.' },
+      { speaker: 'voice', text: 'THEN FACE... THE CORE.', style: 'distorted' },
+    ],
+  },
+
+  core_phase2: {
+    id: 'core_phase2',
+    lines: [
+      { speaker: 'narrator', text: 'The tree splits open. Mechanical systems activate within its trunk.' },
+      { speaker: 'voice', text: 'THEY TRIED... TO MAKE ME STRONGER... TO CONTROL ME...', style: 'distorted' },
+      { speaker: 'voice', text: 'NOW I AM... NEITHER TREE... NOR MACHINE... I AM PERFECT.', style: 'distorted' },
+      { speaker: 'zachery', text: 'You\'re not perfect. You\'re broken.' },
+    ],
+  },
+
+  core_phase3: {
+    id: 'core_phase3',
+    lines: [
+      { speaker: 'narrator', text: 'The Core splits wide open — exposing a pulsing, glowing heart of corrupted energy.' },
+      { speaker: 'voice', text: 'ALL... LIFE... WILL BE... OPTIMIZED...', style: 'distorted' },
+      { speaker: 'narrator', text: 'Mech-Eggs and Onioids pour from the Core\'s wounds. This is its last stand.' },
+      { speaker: 'zachery', text: 'Not today.' },
+    ],
+  },
+
   ending: {
     id: 'ending',
     lines: [
       { speaker: 'narrator', text: 'Zachery\'s ancient arrow — a relic from his first journey — answers his call one final time.' },
-      { speaker: 'narrator', text: 'It pierces through the Rotten Colossus like a bolt of pure light.' },
-      { speaker: 'narrator', text: 'The Colossus detonates in a cataclysmic explosion, corruption shattering into dust.' },
-      { speaker: 'narrator', text: 'The chamber falls silent. The metal roots crumble away.' },
-      { speaker: 'narrator', text: 'Zachery kneels among the ruins of what was once alive.' },
+      { speaker: 'narrator', text: 'It pierces through the Rotten Core like a bolt of pure light.' },
+      { speaker: 'narrator', text: 'The Core detonates. The green glow begins to fade. Mechanical parts shut down one by one.' },
+      { speaker: 'narrator', text: 'The forest falls silent. Not the unnatural silence of corruption — but the peaceful quiet of healing.' },
+      { speaker: 'narrator', text: 'Zachery kneels among the ruins of what was once the Heart Tree.' },
       { speaker: 'zachery', text: '...I won\'t make that mistake again.', style: 'whisper' },
-      { speaker: 'narrator', text: 'The forest stirs. New growth pushes through the rust. Perhaps… redemption is possible.' },
+      { speaker: 'narrator', text: 'New growth pushes through the rust. The forest breathes again.' },
+      { speaker: 'narrator', text: 'But deep underground… the Core pulses one last time…' },
+      { speaker: 'narrator', text: '...then goes dark.' },
     ],
   },
 
@@ -232,6 +293,7 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   6: ['chapter3_mid'],
   7: ['chapter3_end', 'chapter4_start'],
   8: ['chapter4_boss'],
+  9: ['chapter5_start', 'rotten_core_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up

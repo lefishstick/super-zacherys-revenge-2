@@ -6,6 +6,7 @@ import onionImg from '@/assets/OnionEnemy.png';
 import eggImg from '@/assets/eggEnemy.png';
 import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
+import rottenCoreImg from '/images/rotten-core.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -51,7 +52,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -271,9 +272,24 @@ export function useGameLoop() {
           // Finisher complete!
           f.active = false;
           s.score += 2000;
-          s.gameState = 'victory';
-          setGameState('victory');
-          setScore(s.score);
+          
+          if (s.levelNum < TOTAL_LEVELS) {
+            // Colossus defeated — transition to Rotten Core level
+            setScore(s.score);
+            const nextLevel = s.levelNum + 1;
+            const handler = (window as any).__handleLevelTransition;
+            if (handler) {
+              handler(nextLevel);
+            } else {
+              setCurrentLevel(nextLevel);
+              initLevel(nextLevel);
+            }
+          } else {
+            // Final boss defeated — victory!
+            s.gameState = 'victory';
+            setGameState('victory');
+            setScore(s.score);
+          }
         }
       }
       
@@ -512,31 +528,174 @@ export function useGameLoop() {
       const b = level.boss;
       b.attackCooldown--;
 
+      const isRottenCore = b.bossType === 'rotten_core';
+
       if (b.attackCooldown <= 0) {
-        const rng = Math.random();
-        if (rng < 0.4) {
-          b.attackType = 'charge';
-          b.direction = p.x < b.x ? -1 : 1;
-          b.velocityX = b.direction * 6;
-          b.attackCooldown = 90;
-        } else if (rng < 0.7) {
-          b.attackType = 'stomp';
-          b.velocityY = -15;
-          b.attackCooldown = 80;
+        if (isRottenCore) {
+          // ROTTEN CORE BOSS AI
+          const rng = Math.random();
+          if (b.phase === 1) {
+            // Phase 1: Ancient Tree — root attacks, ground slams
+            if (rng < 0.4) {
+              b.attackType = 'root_attack';
+              // Spawn root projectiles from ground
+              for (let i = 0; i < 3; i++) {
+                const rootX = p.x + (Math.random() - 0.5) * 200;
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 20, height: 20,
+                  velocityX: 0, velocityY: -8 - Math.random() * 4,
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+                spawnParticles(rootX, level.groundY - 10, '#44aa22', 5);
+              }
+              b.attackCooldown = 70;
+            } else if (rng < 0.7) {
+              b.attackType = 'stomp';
+              b.velocityY = -12;
+              b.attackCooldown = 80;
+            } else {
+              b.attackType = 'shoot';
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              s.projectiles.push({
+                x: b.x + b.width / 2, y: b.y + b.height / 2,
+                width: 18, height: 18,
+                velocityX: Math.cos(angle) * 6, velocityY: Math.sin(angle) * 6,
+                isPlayerProjectile: false, damage: 2, lifetime: 100,
+              });
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#66ff22', 8);
+              b.attackCooldown = 50;
+            }
+          } else if (b.phase === 2) {
+            // Phase 2: Corruption — lasers, toxic gas, ranged
+            if (rng < 0.3) {
+              b.attackType = 'laser';
+              // Fire laser beam (multiple fast projectiles in a line)
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              for (let i = 0; i < 5; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 12, height: 12,
+                  velocityX: Math.cos(angle) * (8 + i * 2), velocityY: Math.sin(angle) * (8 + i * 2),
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#44ffaa', 12);
+              b.attackCooldown = 60;
+            } else if (rng < 0.6) {
+              b.attackType = 'toxic_gas';
+              // Spread toxic gas projectiles
+              for (let i = 0; i < 6; i++) {
+                const a = (Math.PI * 2 / 6) * i;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 15, height: 15,
+                  velocityX: Math.cos(a) * 4, velocityY: Math.sin(a) * 4,
+                  isPlayerProjectile: false, damage: 1, lifetime: 80,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#88ff00', 15);
+              b.attackCooldown = 55;
+            } else {
+              b.attackType = 'root_attack';
+              for (let i = 0; i < 5; i++) {
+                const rootX = 100 + Math.random() * (level.width - 200);
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 20, height: 20,
+                  velocityX: 0, velocityY: -10 - Math.random() * 5,
+                  isPlayerProjectile: false, damage: 2, lifetime: 50,
+                });
+                spawnParticles(rootX, level.groundY - 10, '#44aa22', 3);
+              }
+              b.attackCooldown = 65;
+            }
+          } else {
+            // Phase 3: Exposed Core — everything + enemy spawns
+            if (rng < 0.25) {
+              b.attackType = 'spawn';
+              // Spawn enemies
+              const spawnType = Math.random() < 0.5 ? 'egg' : 'onion';
+              const aliveEnemies = level.enemies.filter(e => e.isAlive).length;
+              if (aliveEnemies < 4) {
+                const enemy: Enemy = {
+                  x: b.x + (Math.random() - 0.5) * 100,
+                  y: b.y + b.height - 70,
+                  width: 60, height: 70,
+                  velocityX: (Math.random() - 0.5) * 4,
+                  velocityY: -5,
+                  type: spawnType as 'egg' | 'onion',
+                  health: spawnType === 'onion' ? 4 : 3,
+                  maxHealth: spawnType === 'onion' ? 4 : 3,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                };
+                level.enemies.push(enemy);
+                spawnParticles(enemy.x + 30, enemy.y + 35, '#66ff22', 10);
+              }
+              b.attackCooldown = 40;
+            } else if (rng < 0.5) {
+              b.attackType = 'laser';
+              // Triple laser
+              for (let beam = -1; beam <= 1; beam++) {
+                const baseAngle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+                const angle = baseAngle + beam * 0.3;
+                for (let i = 0; i < 4; i++) {
+                  s.projectiles.push({
+                    x: b.x + b.width / 2, y: b.y + b.height / 2,
+                    width: 12, height: 12,
+                    velocityX: Math.cos(angle) * (7 + i * 2), velocityY: Math.sin(angle) * (7 + i * 2),
+                    isPlayerProjectile: false, damage: 3, lifetime: 60,
+                  });
+                }
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4422', 15);
+              b.attackCooldown = 50;
+            } else if (rng < 0.75) {
+              b.attackType = 'toxic_gas';
+              for (let i = 0; i < 10; i++) {
+                const a = (Math.PI * 2 / 10) * i;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 15, height: 15,
+                  velocityX: Math.cos(a) * 5, velocityY: Math.sin(a) * 5,
+                  isPlayerProjectile: false, damage: 2, lifetime: 70,
+                });
+              }
+              b.attackCooldown = 45;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 5;
+              b.attackCooldown = 60;
+            }
+          }
         } else {
-          b.attackType = 'shoot';
-          s.projectiles.push({
-            x: b.x + b.width / 2,
-            y: b.y + b.height / 2,
-            width: 15, height: 15,
-            velocityX: (p.x < b.x ? -1 : 1) * 7,
-            velocityY: -2,
-            isPlayerProjectile: false,
-            damage: 2,
-            lifetime: 120,
-          });
-          b.attackCooldown = 60;
-          spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 8);
+          // COLOSSUS BOSS AI (original)
+          const rng = Math.random();
+          if (rng < 0.4) {
+            b.attackType = 'charge';
+            b.direction = p.x < b.x ? -1 : 1;
+            b.velocityX = b.direction * 6;
+            b.attackCooldown = 90;
+          } else if (rng < 0.7) {
+            b.attackType = 'stomp';
+            b.velocityY = -15;
+            b.attackCooldown = 80;
+          } else {
+            b.attackType = 'shoot';
+            s.projectiles.push({
+              x: b.x + b.width / 2,
+              y: b.y + b.height / 2,
+              width: 15, height: 15,
+              velocityX: (p.x < b.x ? -1 : 1) * 7,
+              velocityY: -2,
+              isPlayerProjectile: false,
+              damage: 2,
+              lifetime: 120,
+            });
+            b.attackCooldown = 60;
+            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 8);
+          }
         }
       }
 
@@ -554,14 +713,32 @@ export function useGameLoop() {
           b.y = plat.y - b.height;
           b.velocityY = 0;
           if (b.attackType === 'stomp') {
-            spawnParticles(b.x + b.width / 2, b.y + b.height, '#886633', 20);
+            spawnParticles(b.x + b.width / 2, b.y + b.height, isRottenCore ? '#44aa22' : '#886633', 20);
             b.attackType = 'idle';
+            // Rotten Core stomp spawns root projectiles
+            if (isRottenCore) {
+              for (let i = 0; i < 4; i++) {
+                const rootX = b.x + b.width / 2 + (i - 1.5) * 80;
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 18, height: 18,
+                  velocityX: 0, velocityY: -12,
+                  isPlayerProjectile: false, damage: 2, lifetime: 40,
+                });
+                spawnParticles(rootX, level.groundY, '#66ff22', 5);
+              }
+            }
           }
         }
       }
 
       if (b.x < 0) { b.x = 0; b.velocityX *= -1; }
       if (b.x > level.width - b.width) { b.x = level.width - b.width; b.velocityX *= -1; }
+
+      // Phase cutscene events for Rotten Core
+      const phaseEvents = isRottenCore
+        ? { 2: 'core_phase2', 3: 'core_phase3' }
+        : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
       // Player melee/AOE attack hits boss
       if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
@@ -585,13 +762,13 @@ export function useGameLoop() {
             b.phase = 3;
             if (!s.bossPhaseTriggered[3]) {
               s.bossPhaseTriggered[3] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
             }
           } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
             b.phase = 2;
             if (!s.bossPhaseTriggered[2]) {
               s.bossPhaseTriggered[2] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
             }
           }
         }
@@ -603,7 +780,7 @@ export function useGameLoop() {
           p.x < b.x + b.width && p.x + p.width > b.x &&
           p.y < b.y + b.height && p.y + p.height > b.y
         ) {
-          p.health -= 2;
+          p.health -= isRottenCore ? 3 : 2;
           p.invincibleTimer = 90;
           p.velocityX = (p.x < b.x ? -1 : 1) * 10;
           p.velocityY = -8;
@@ -662,17 +839,19 @@ export function useGameLoop() {
               b.health = 0;
               startFinisher();
             }
+            const isRC = b.bossType === 'rotten_core';
+            const pe = isRC ? { 2: 'core_phase2', 3: 'core_phase3' } : { 2: 'boss_phase2', 3: 'boss_phase3' };
             if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
               b.phase = 3;
               if (!s.bossPhaseTriggered[3]) {
                 s.bossPhaseTriggered[3] = true;
-                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[3] }));
               }
             } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
               b.phase = 2;
               if (!s.bossPhaseTriggered[2]) {
                 s.bossPhaseTriggered[2] = true;
-                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[2] }));
               }
             }
             return false;
@@ -871,7 +1050,7 @@ export function useGameLoop() {
           ctx.globalAlpha = 1;
         }
       }
-    } else {
+    } else if (chapter === 4) {
       // ROTTING HEART — Flesh & metal, grotesque organic-mechanical
       const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
       skyGrad.addColorStop(0, '#1a0505');
@@ -916,6 +1095,66 @@ export function useGameLoop() {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    } else if (chapter === 5) {
+      // THE ROTTEN CORE — Deep underground, massive tree roots, green toxic glow
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#050a05');
+      skyGrad.addColorStop(0.3, '#0a1a08');
+      skyGrad.addColorStop(0.6, '#081508');
+      skyGrad.addColorStop(1, '#030a03');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Massive root system in background
+      ctx.strokeStyle = '#1a3310';
+      ctx.lineWidth = 12;
+      for (let i = 0; i < 8; i++) {
+        const rx = i * 300 - (camX * 0.1) % 600;
+        const sway = Math.sin(t * 0.001 + i * 2) * 10;
+        ctx.beginPath();
+        ctx.moveTo(rx, CANVAS_H);
+        ctx.bezierCurveTo(rx + sway + 40, CANVAS_H - 150, rx - sway + 20, CANVAS_H - 300, rx + sway, 0);
+        ctx.stroke();
+      }
+      // Toxic green glow pulsing
+      const toxicPulse = Math.sin(t * 0.003) * 0.5 + 0.5;
+      ctx.globalAlpha = toxicPulse * 0.06;
+      ctx.fillStyle = '#44ff22';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Green energy veins on walls
+      ctx.strokeStyle = '#44ff2288';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 12; i++) {
+        const vx = i * 200 - (camX * 0.2) % 400;
+        const pulse = Math.sin(t * 0.004 + i * 1.3) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 20, CANVAS_H - 200, vx - 15, CANVAS_H - 320, vx + 10, CANVAS_H - 450);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Floating toxic particles
+      ctx.fillStyle = '#66ff44';
+      ctx.globalAlpha = 0.2;
+      for (let i = 0; i < 20; i++) {
+        const px = (i * 150 + t * 0.015) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.025 + i * 60) % (CANVAS_H - 80));
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5 + Math.sin(t * 0.006 + i) * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Ground corruption cracks
+      ctx.strokeStyle = '#44ff2244';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 15; i++) {
+        const cx = i * 180 - (camX * 0.3) % 360;
+        ctx.beginPath();
+        ctx.moveTo(cx, CANVAS_H - 100);
+        ctx.lineTo(cx + (Math.sin(i * 3) * 20), CANVAS_H - 100 - 15 - Math.random() * 10);
+        ctx.stroke();
+      }
     }
   };
 
@@ -948,10 +1187,12 @@ export function useGameLoop() {
     const groundColors = ch === 1 ? ['#2a4a1a','#1a3310','#0a1a05','#44aa22']
       : ch === 2 ? ['#1a1a3a','#151530','#0a0a1a','#4455aa']
       : ch === 3 ? ['#3a2a1a','#2a1a10','#1a0f05','#aa6622']
+      : ch === 5 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
       : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
     const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
       : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
       : ch === 3 ? ['#4a3a2a','#aa7733','#886622']
+      : ch === 5 ? ['#2a3a2a','#44aa22','#227711']
       : ['#3a2020','#aa3333','#882222'];
 
     // Draw platforms
@@ -1090,33 +1331,53 @@ export function useGameLoop() {
     if (s.level.boss?.isAlive) {
       const b = s.level.boss;
       const bx = b.x - camX;
-      const img = s.images.boss;
-      if (img?.complete) {
+      const isRC = b.bossType === 'rotten_core';
+      const bossImage = isRC ? s.images.rottenCore : s.images.boss;
+      
+      if (bossImage?.complete) {
         ctx.save();
-        ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
-        ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
+        if (isRC) {
+          // Rotten Core: green toxic glow based on phase
+          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
+          ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
+        } else {
+          ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
+          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
+        }
         if (b.direction > 0) {
           ctx.translate(bx + b.width, b.y);
           ctx.scale(-1, 1);
-          ctx.drawImage(img, 0, 0, b.width, b.height);
+          ctx.drawImage(bossImage, 0, 0, b.width, b.height);
         } else {
-          ctx.drawImage(img, bx, b.y, b.width, b.height);
+          ctx.drawImage(bossImage, bx, b.y, b.width, b.height);
         }
         ctx.shadowBlur = 0;
         ctx.restore();
       }
 
+      // Boss health bar
+      const bossBarColor = isRC
+        ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11')
+        : (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900');
       ctx.fillStyle = '#330000';
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
-      ctx.fillStyle = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900';
+      ctx.fillStyle = bossBarColor;
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300 * (b.health / b.maxHealth), 16);
-      ctx.strokeStyle = '#ffaa00';
+      ctx.strokeStyle = isRC ? '#44ff22' : '#ffaa00';
       ctx.lineWidth = 2;
       ctx.strokeRect(CANVAS_W / 2 - 150, 20, 300, 16);
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px MedievalSharp';
       ctx.textAlign = 'center';
-      ctx.fillText('THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+      ctx.fillText(isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+      
+      // Phase indicator for Rotten Core
+      if (isRC) {
+        const phaseNames = ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
+        ctx.fillStyle = bossBarColor;
+        ctx.font = '10px MedievalSharp';
+        ctx.fillText(`Phase ${b.phase}: ${phaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
+      }
     }
 
     // Draw player
@@ -1229,6 +1490,7 @@ export function useGameLoop() {
       6: '3-2: Pulsing Veins',
       7: '4-1: Corrupted Approach',
       8: '4-2: The Rotting Heart',
+      9: '5-1: The Rotten Core',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
