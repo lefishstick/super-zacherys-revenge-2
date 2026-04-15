@@ -147,28 +147,43 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
+  // ═══════════════════════════════════════════
+  // LEVI TAKES OVER — After Colossus Defeat
+  // ═══════════════════════════════════════════
+
   colossus_ending: {
     id: 'colossus_ending',
     lines: [
       { speaker: 'narrator', text: 'Zachery\'s ancient arrow pierces through the Rotten Colossus.' },
       { speaker: 'narrator', text: 'The Colossus detonates in a cataclysmic explosion.' },
-      { speaker: 'narrator', text: 'But the ground still trembles. Something deeper still lives.' },
-      { speaker: 'zachery', text: '...It\'s not over. The source is still down there.', style: 'whisper' },
+      { speaker: 'narrator', text: 'But the blast sends Zachery flying. He crashes into the cavern wall.' },
+      { speaker: 'zachery', text: 'Ugh… I can\'t… move…', style: 'whisper' },
+      { speaker: 'narrator', text: 'From the shadows, a figure emerges. Curly hair. Glasses. A hungry look in his eyes.' },
+      { speaker: 'levi', text: 'Zachery! Are you okay?!' },
+      { speaker: 'zachery', text: 'Levi… the Core… it\'s still alive down there. You have to finish it.', style: 'whisper' },
+      { speaker: 'levi', text: '...Me? But I don\'t have weapons like you.' },
+      { speaker: 'zachery', text: 'You don\'t need weapons. You have something better.', style: 'whisper' },
+      { speaker: 'levi', text: '...My appetite?' },
+      { speaker: 'zachery', text: 'Your POWER. Devour them, Levi. Eat everything the Core throws at you.', style: 'whisper' },
+      { speaker: 'levi', text: 'Say less. 😤' },
+      { speaker: 'narrator', text: 'Super Levi steps forward. The ground trembles beneath him.' },
+      { speaker: 'narrator', text: 'A new hero rises. The forest\'s last hope.' },
     ],
   },
 
   // ═══════════════════════════════════════════
-  // CHAPTER 5: THE ROTTEN CORE
+  // CHAPTER 5: THE ROTTEN CORE — LEVI'S CHAPTER
   // ═══════════════════════════════════════════
 
   chapter5_start: {
     id: 'chapter5_start',
     chapterName: 'Chapter 5: The Rotten Core',
     lines: [
-      { speaker: 'narrator', text: 'Zachery descends into the deepest chamber of the corrupted forest.' },
+      { speaker: 'narrator', text: 'Super Levi descends into the deepest chamber of the corrupted forest.' },
       { speaker: 'narrator', text: 'The air is thick with toxic energy. Roots of metal and flesh intertwine everywhere.' },
+      { speaker: 'levi', text: 'Smells terrible down here. Kinda making me hungry though.' },
       { speaker: 'narrator', text: 'And then… silence. An unnatural, absolute silence.' },
-      { speaker: 'zachery', text: 'This is where it all started...', style: 'whisper' },
+      { speaker: 'levi', text: 'Alright big tree... let\'s do this.' },
     ],
   },
 
@@ -176,13 +191,14 @@ export const CUTSCENES: Record<string, Cutscene> = {
     id: 'rotten_core_intro',
     chapterName: 'The Heart Tree Awakens',
     lines: [
-      { speaker: 'narrator', text: 'The ground begins to tremble. Roots burst through the earth around Zachery.' },
+      { speaker: 'narrator', text: 'The ground begins to tremble. Roots burst through the earth around Levi.' },
       { speaker: 'narrator', text: 'What he thought was terrain… begins to MOVE.' },
       { speaker: 'narrator', text: 'Eyes ignite with sickly green light. Mechanical parts grind to life.' },
       { speaker: 'narrator', text: 'The Heart Tree — once the source of all life in this forest — has become something else.' },
-      { speaker: 'voice', text: 'YOU... COME TO DESTROY... WHAT YOU CREATED?', style: 'distorted' },
-      { speaker: 'zachery', text: 'I came to end this. All of it.' },
-      { speaker: 'voice', text: 'THEN FACE... THE CORE.', style: 'distorted' },
+      { speaker: 'core', text: 'ANOTHER ONE? YOU ARE NOT... THE ONE WHO CAME BEFORE.', style: 'distorted' },
+      { speaker: 'levi', text: 'Nah. I\'m worse. I\'m HUNGRY.' },
+      { speaker: 'core', text: 'FOOLISH... MORSEL.', style: 'distorted' },
+      { speaker: 'levi', text: 'We\'ll see who\'s the morsel here.' },
     ],
   },
 
@@ -190,9 +206,10 @@ export const CUTSCENES: Record<string, Cutscene> = {
     id: 'core_phase2',
     lines: [
       { speaker: 'narrator', text: 'The tree splits open. Mechanical systems activate within its trunk.' },
-      { speaker: 'voice', text: 'THEY TRIED... TO MAKE ME STRONGER... TO CONTROL ME...', style: 'distorted' },
-      { speaker: 'voice', text: 'NOW I AM... NEITHER TREE... NOR MACHINE... I AM PERFECT.', style: 'distorted' },
-      { speaker: 'zachery', text: 'You\'re not perfect. You\'re broken.' },
+      { speaker: 'core', text: 'HOW... ARE YOU CONSUMING MY MINIONS?!', style: 'distorted' },
+      { speaker: 'levi', text: 'They taste like metal and regret. Pretty good actually.' },
+      { speaker: 'core', text: 'YOU... DISGUST ME.', style: 'distorted' },
+      { speaker: 'levi', text: 'That\'s what they all say.' },
     ],
   },
 
@@ -200,24 +217,27 @@ export const CUTSCENES: Record<string, Cutscene> = {
     id: 'core_phase3',
     lines: [
       { speaker: 'narrator', text: 'The Core splits wide open — exposing a pulsing, glowing heart of corrupted energy.' },
-      { speaker: 'voice', text: 'ALL... LIFE... WILL BE... OPTIMIZED...', style: 'distorted' },
-      { speaker: 'narrator', text: 'Mech-Eggs and Onioids pour from the Core\'s wounds. This is its last stand.' },
-      { speaker: 'zachery', text: 'Not today.' },
+      { speaker: 'core', text: 'NO... STAY BACK... YOU CANNOT... EAT ME!', style: 'distorted' },
+      { speaker: 'narrator', text: 'Mech-Eggs and Onioids pour from the Core\'s wounds. Its last desperate defense.' },
+      { speaker: 'levi', text: 'More snacks? Don\'t mind if I do.' },
     ],
   },
 
   ending: {
     id: 'ending',
     lines: [
-      { speaker: 'narrator', text: 'Zachery\'s ancient arrow — a relic from his first journey — answers his call one final time.' },
-      { speaker: 'narrator', text: 'It pierces through the Rotten Core like a bolt of pure light.' },
-      { speaker: 'narrator', text: 'The Core detonates. The green glow begins to fade. Mechanical parts shut down one by one.' },
+      { speaker: 'narrator', text: 'Super Levi opens his jaws impossibly wide.' },
+      { speaker: 'narrator', text: 'He DEVOURS the Rotten Core whole — roots, metal, corruption and all.' },
+      { speaker: 'narrator', text: 'The green glow fades from the forest. Mechanical parts crumble to dust.' },
       { speaker: 'narrator', text: 'The forest falls silent. Not the unnatural silence of corruption — but the peaceful quiet of healing.' },
-      { speaker: 'narrator', text: 'Zachery kneels among the ruins of what was once the Heart Tree.' },
-      { speaker: 'zachery', text: '...I won\'t make that mistake again.', style: 'whisper' },
-      { speaker: 'narrator', text: 'New growth pushes through the rust. The forest breathes again.' },
-      { speaker: 'narrator', text: 'But deep underground… the Core pulses one last time…' },
-      { speaker: 'narrator', text: '...then goes dark.' },
+      { speaker: 'levi', text: '*burp* ...that was a lot.' },
+      { speaker: 'narrator', text: 'Levi carries Zachery out of the cavern. New growth pushes through the rust.' },
+      { speaker: 'zachery', text: 'You actually ate it. The whole thing.', style: 'whisper' },
+      { speaker: 'levi', text: 'I told you. Never underestimate my appetite.' },
+      { speaker: 'narrator', text: 'The forest breathes again. Two heroes, one legacy.' },
+      { speaker: 'narrator', text: 'But deep underground… something stirs in Levi\'s stomach…' },
+      { speaker: 'levi', text: '...was that a bad idea?' },
+      { speaker: 'narrator', text: '...to be continued?' },
     ],
   },
 

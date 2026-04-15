@@ -7,6 +7,7 @@ import eggImg from '@/assets/eggEnemy.png';
 import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
 import rottenCoreImg from '/images/rotten-core.png';
+import leviImg from '/images/levi.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -52,7 +53,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -95,6 +96,8 @@ export function useGameLoop() {
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
+      isLevi: s.player?.isLevi ?? false,
+      devouredEnemies: s.player?.devouredEnemies ?? 0,
     };
   }, []);
 
@@ -165,24 +168,22 @@ export function useGameLoop() {
           f.meter = Math.min(100, f.meter + 3.5);
           f.lastMashTime = Date.now();
           f.jWasUp = false;
-          // Shake feedback
           f.screenShake = 4;
           if (s.level.boss) {
+            const isRC = s.level.boss.bossType === 'rotten_core';
             spawnParticles(
               s.level.boss.x + s.level.boss.width / 2,
               s.level.boss.y + s.level.boss.height / 2,
-              f.meter > 70 ? '#ffdd00' : '#ff6600', 3
+              isRC ? (f.meter > 70 ? '#ff6600' : '#44ff22') : (f.meter > 70 ? '#ffdd00' : '#ff6600'), 3
             );
           }
         }
         if (!jDown) f.jWasUp = true;
         
-        // Meter drains slowly
         if (Date.now() - f.lastMashTime > 300) {
           f.meter = Math.max(0, f.meter - 0.4);
         }
         
-        // If meter full, launch the arrow!
         if (f.meter >= 100) {
           f.arrowPhase = 'flying';
           f.arrowX = -100;
@@ -193,43 +194,56 @@ export function useGameLoop() {
           f.arrowY = f.arrowTargetY;
         }
         
-        // Boss stays stunned, wobbling
         if (s.level.boss) {
           s.level.boss.velocityX = 0;
           s.level.boss.velocityY = 0;
           s.level.boss.attackCooldown = 999;
         }
       } else if (f.arrowPhase === 'flying') {
-        // Arrow flies from left side across screen toward boss
-        f.arrowX += 28;
-        // Trail particles
-        spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
-        spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
-        
-        if (f.arrowX >= f.arrowTargetX) {
-          f.arrowPhase = 'impact';
-          f.explosionTimer = 0;
-          f.screenShake = 20;
+        const isRC = s.level.boss?.bossType === 'rotten_core';
+        if (isRC) {
+          // LEVI DEVOUR: Player rushes toward boss
+          const p = s.player!;
+          const targetX = f.arrowTargetX - p.width / 2;
+          const dx = targetX - p.x;
+          p.x += Math.sign(dx) * 15;
+          p.facingRight = dx > 0;
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff6600', 3);
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 2);
+          if (Math.abs(dx) < 30) {
+            f.arrowPhase = 'impact';
+            f.explosionTimer = 0;
+            f.screenShake = 25;
+          }
+        } else {
+          // Arrow flies from left side across screen toward boss
+          f.arrowX += 28;
+          spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
+          spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
+          if (f.arrowX >= f.arrowTargetX) {
+            f.arrowPhase = 'impact';
+            f.explosionTimer = 0;
+            f.screenShake = 20;
+          }
         }
       } else if (f.arrowPhase === 'impact') {
+        const isRC = s.level.boss?.bossType === 'rotten_core';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 20 - f.explosionTimer);
         
-        // Arrow continues through
-        f.arrowX += 20;
+        if (!isRC) f.arrowX += 20;
         
         if (f.explosionTimer === 1) {
-          // First impact - big flash particles
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
+          const colors = isRC ? ['#44ff22', '#ff6600', '#ffffff', '#88ff44'] : ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'];
           for (let i = 0; i < 40; i++) {
             s.particles.push({
               x: bx, y: by,
               vx: (Math.random() - 0.5) * 16,
               vy: (Math.random() - 0.5) * 16,
-              life: 40 + Math.random() * 30,
-              maxLife: 70,
-              color: ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'][Math.floor(Math.random() * 4)],
+              life: 40 + Math.random() * 30, maxLife: 70,
+              color: colors[Math.floor(Math.random() * 4)],
               size: 4 + Math.random() * 8,
             });
           }
@@ -240,14 +254,17 @@ export function useGameLoop() {
           f.explosionTimer = 0;
         }
       } else if (f.arrowPhase === 'exploding') {
+        const isRC = s.level.boss?.bossType === 'rotten_core';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 15 - f.explosionTimer * 0.5);
         
-        // Multiple explosion waves
         if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
           const wave = f.explosionTimer / 8;
+          const colors = isRC 
+            ? ['#44ff22', '#88ff44', '#ff6600', '#ffffff', '#22aa11']
+            : ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'];
           for (let i = 0; i < 30; i++) {
             const angle = (Math.PI * 2 / 30) * i;
             const speed = 4 + wave * 2;
@@ -255,26 +272,30 @@ export function useGameLoop() {
               x: bx, y: by,
               vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
               vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 3,
-              life: 50 + Math.random() * 30,
-              maxLife: 80,
-              color: ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'][Math.floor(Math.random() * 5)],
+              life: 50 + Math.random() * 30, maxLife: 80,
+              color: colors[Math.floor(Math.random() * 5)],
               size: 3 + Math.random() * 10,
             });
           }
         }
         
-        // Make boss disappear
         if (s.level.boss) {
           s.level.boss.isAlive = false;
         }
         
         if (f.explosionTimer > 90) {
-          // Finisher complete!
           f.active = false;
           s.score += 2000;
           
           if (s.levelNum < TOTAL_LEVELS) {
-            // Colossus defeated — transition to Rotten Core level
+            // Colossus defeated — swap to Levi!
+            if (s.player) {
+              s.player.isLevi = true;
+              s.player.devouredEnemies = 0;
+              s.player.health = s.player.maxHealth; // Full heal on swap
+            }
+            // Dispatch music change event
+            window.dispatchEvent(new CustomEvent('switch_to_levi'));
             setScore(s.score);
             const nextLevel = s.levelNum + 1;
             const handler = (window as any).__handleLevelTransition;
@@ -285,7 +306,7 @@ export function useGameLoop() {
               initLevel(nextLevel);
             }
           } else {
-            // Final boss defeated — victory!
+            // Final boss devoured — victory!
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
@@ -332,41 +353,93 @@ export function useGameLoop() {
       p.velocityY = JUMP_FORCE;
       p.onGround = false;
       p.isJumping = true;
+      // Levi's jump shockwave
+      if (p.isLevi) {
+        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 15);
+        // Damage nearby enemies with shockwave
+        for (const e of level.enemies) {
+          if (!e.isAlive) continue;
+          const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
+          const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
+          if (Math.sqrt(dx * dx + dy * dy) < 120) {
+            e.health -= 2;
+            e.velocityY = -8;
+            e.velocityX = dx > 0 ? 5 : -5;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff8800', 8);
+            if (e.health <= 0) {
+              e.isAlive = false;
+              s.score += e.type === 'onion' ? 300 : 200;
+              spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+            }
+          }
+        }
+        // Shockwave hits boss too
+        if (level.boss?.isAlive) {
+          const b = level.boss;
+          const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
+          const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
+          if (Math.sqrt(dx * dx + dy * dy) < 150) {
+            b.health -= 2;
+            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff8800', 10);
+            if (b.health <= 0) { b.health = 0; startFinisher(); }
+          }
+        }
+      }
     }
 
     // Attack
     if (keys.has('z') || keys.has('j')) {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
-        p.attackTimer = weapon.speed;
         
-        if (weapon.isRanged && weapon.projectileSpeed) {
-          // Fire projectile
-          s.projectiles.push({
-            x: p.x + (p.facingRight ? p.width : -15),
-            y: p.y + p.height / 2 - 7,
-            width: 15, height: 15,
-            velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
-            velocityY: 0,
-            isPlayerProjectile: true,
-            damage: weapon.damage,
-            lifetime: 80,
-          });
-          spawnParticles(
-            p.x + (p.facingRight ? p.width : 0),
-            p.y + p.height / 2,
-            weapon.color, 6
-          );
-        } else if (weapon.aoeRadius) {
-          // AOE attack
-          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+        if (p.isLevi) {
+          // LEVI ATTACK: Devour or shoot devoured enemies
+          p.attackTimer = 20;
+          if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
+            // Shoot devoured enemy as projectile (hold up + attack)
+            p.devouredEnemies--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -20),
+              y: p.y + p.height / 2 - 10,
+              width: 25, height: 25,
+              velocityX: (p.facingRight ? 1 : -1) * 12,
+              velocityY: -2,
+              isPlayerProjectile: true,
+              damage: 5,
+              lifetime: 100,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 10);
+          } else {
+            // Devour attack — close range, high damage, eats enemies
+            spawnParticles(
+              p.x + (p.facingRight ? p.width + 15 : -15),
+              p.y + p.height / 2,
+              '#ff6600', 8
+            );
+          }
         } else {
-          // Melee attack
-          spawnParticles(
-            p.x + (p.facingRight ? p.width + 20 : -20),
-            p.y + p.height / 2,
-            weapon.color, 5
-          );
+          p.attackTimer = weapon.speed;
+          if (weapon.isRanged && weapon.projectileSpeed) {
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -15),
+              y: p.y + p.height / 2 - 7,
+              width: 15, height: 15,
+              velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: weapon.damage,
+              lifetime: 80,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, weapon.color, 6);
+          } else if (weapon.aoeRadius) {
+            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+          } else {
+            spawnParticles(
+              p.x + (p.facingRight ? p.width + 20 : -20),
+              p.y + p.height / 2,
+              weapon.color, 5
+            );
+          }
         }
       }
     }
@@ -474,7 +547,33 @@ export function useGameLoop() {
       }
 
       // Player melee/AOE attack hits enemy
-      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+      const leviDevourRange = 80;
+      if (p.isLevi) {
+        // Levi devour attack
+        if (p.isAttacking && p.attackTimer > 15) {
+          const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
+          const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < leviDevourRange) {
+            e.health -= 3;
+            e.velocityX = (p.facingRight ? 1 : -1) * 8;
+            e.velocityY = -3;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 8);
+            if (e.health <= 0) {
+              e.isAlive = false;
+              s.score += e.type === 'onion' ? 300 : 200;
+              p.devouredEnemies = Math.min(5, p.devouredEnemies + 1);
+              // Devour effect — enemy gets sucked in
+              spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 20);
+              spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+              if (Math.random() < 0.3) {
+                p.health = Math.min(p.maxHealth, p.health + 1);
+                spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 10);
+              }
+            }
+          }
+        }
+      } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
         let hit = false;
         if (isAOE) {
           const dx = (e.x + e.width / 2) - aoeCenterX;
@@ -493,7 +592,6 @@ export function useGameLoop() {
             e.isAlive = false;
             s.score += e.type === 'onion' ? 300 : 200;
             spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
-            // 40% chance to drop health
             if (Math.random() < 0.4) {
               level.healthPickups.push({
                 x: e.x + e.width / 2 - 12, y: e.y + e.height / 2 - 12,
@@ -740,40 +838,59 @@ export function useGameLoop() {
         ? { 2: 'core_phase2', 3: 'core_phase3' }
         : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
-      // Player melee/AOE attack hits boss
-      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
-        let hit = false;
-        if (isAOE) {
-          const dx = (b.x + b.width / 2) - aoeCenterX;
-          const dy = (b.y + b.height / 2) - aoeCenterY;
-          hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
-        } else {
-          hit = atkX < b.x + b.width && atkX + atkRange > b.x &&
-                atkY < b.y + b.height && atkY + p.height > b.y;
-        }
-        if (hit) {
-          b.health -= weapon.damage;
-          spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
-          if (b.health <= 0) {
-            b.health = 0;
-            startFinisher();
+      // Player attack hits boss
+      const bossHitCheck = () => {
+        if (p.isLevi) {
+          // Levi devour attack on boss
+          if (p.isAttacking && p.attackTimer > 15) {
+            const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
+            const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
+            if (Math.sqrt(dx * dx + dy * dy) < 100) {
+              b.health -= 3;
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 10);
+              return true;
+            }
           }
-          if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
-            b.phase = 3;
-            if (!s.bossPhaseTriggered[3]) {
-              s.bossPhaseTriggered[3] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
-            }
-          } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
-            b.phase = 2;
-            if (!s.bossPhaseTriggered[2]) {
-              s.bossPhaseTriggered[2] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
-            }
+          return false;
+        } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+          let hit = false;
+          if (isAOE) {
+            const dx = (b.x + b.width / 2) - aoeCenterX;
+            const dy = (b.y + b.height / 2) - aoeCenterY;
+            hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
+          } else {
+            hit = atkX < b.x + b.width && atkX + atkRange > b.x &&
+                  atkY < b.y + b.height && atkY + p.height > b.y;
+          }
+          if (hit) {
+            b.health -= weapon.damage;
+            spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
+            return true;
+          }
+          return false;
+        }
+        return false;
+      };
+      
+      if (bossHitCheck()) {
+        if (b.health <= 0) {
+          b.health = 0;
+          startFinisher();
+        }
+        if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+          b.phase = 3;
+          if (!s.bossPhaseTriggered[3]) {
+            s.bossPhaseTriggered[3] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
+          }
+        } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+          b.phase = 2;
+          if (!s.bossPhaseTriggered[2]) {
+            s.bossPhaseTriggered[2] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
           }
         }
       }
-
       // Boss damages player
       if (p.invincibleTimer <= 0) {
         if (
@@ -1382,26 +1499,59 @@ export function useGameLoop() {
 
     // Draw player
     const px = p.x - camX;
-    const img = s.images.player;
-    if (img?.complete) {
+    const playerImage = p.isLevi ? s.images.levi : s.images.player;
+    if (playerImage?.complete) {
       ctx.save();
       if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.5;
       }
+      // Levi glow effect
+      if (p.isLevi) {
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 12 + Math.sin(Date.now() * 0.005) * 5;
+      }
       if (!p.facingRight) {
         ctx.translate(px + p.width, p.y);
         ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, 0, p.width, p.height);
+        ctx.drawImage(playerImage, 0, 0, p.width, p.height);
       } else {
-        ctx.drawImage(img, px, p.y, p.width, p.height);
+        ctx.drawImage(playerImage, px, p.y, p.width, p.height);
       }
+      ctx.shadowBlur = 0;
       ctx.restore();
+    }
+    
+    // Levi devour counter HUD
+    if (p.isLevi && p.devouredEnemies > 0) {
+      ctx.fillStyle = '#ff660088';
+      ctx.fillRect(10, 42, 100, 18);
+      ctx.fillStyle = '#ff8800';
+      ctx.font = '12px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText(`🍖 Devoured: ${p.devouredEnemies}`, 14, 56);
     }
 
     // Attack effect
     if (p.isAttacking) {
-      if (weapon.aoeRadius) {
-        // AOE ring
+      if (p.isLevi) {
+        // Levi devour bite effect
+        const biteX = p.facingRight ? px + p.width : px - 40;
+        ctx.save();
+        ctx.fillStyle = '#ff660088';
+        ctx.beginPath();
+        ctx.arc(biteX + 20, p.y + p.height / 2, 30, 0, Math.PI * 2);
+        ctx.fill();
+        // Chomping jaw lines
+        ctx.strokeStyle = '#ff8800';
+        ctx.lineWidth = 3;
+        const chomp = Math.sin(Date.now() * 0.02) * 10;
+        ctx.beginPath();
+        ctx.moveTo(biteX, p.y + p.height / 2 - 15 + chomp);
+        ctx.lineTo(biteX + 40, p.y + p.height / 2);
+        ctx.lineTo(biteX, p.y + p.height / 2 + 15 - chomp);
+        ctx.stroke();
+        ctx.restore();
+      } else if (weapon.aoeRadius) {
         ctx.strokeStyle = weapon.color;
         ctx.lineWidth = 3;
         ctx.globalAlpha = 0.5;
@@ -1411,11 +1561,9 @@ export function useGameLoop() {
         ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (!weapon.isRanged) {
-        // Melee slash
         const ax = p.facingRight ? px + p.width : px - weapon.range;
         ctx.fillStyle = weapon.color + '66';
         if (weapon.id === 'vine_whip') {
-          // Whip arc
           ctx.strokeStyle = weapon.color;
           ctx.lineWidth = 3;
           ctx.beginPath();
@@ -1495,26 +1643,37 @@ export function useGameLoop() {
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Weapon HUD (bottom left)
-    ctx.fillStyle = '#000000aa';
-    ctx.fillRect(10, CANVAS_H - 60, 220, 50);
-    ctx.strokeStyle = weapon.color;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
-    
-    // Current weapon name
-    ctx.fillStyle = weapon.color;
-    ctx.font = 'bold 14px MedievalSharp';
-    ctx.textAlign = 'left';
-    ctx.fillText(`⚔ ${weapon.name}`, 20, CANVAS_H - 38);
-    
-    // Weapon slots
-    ctx.font = '11px MedievalSharp';
-    ctx.fillStyle = '#aaaaaa';
-    const slotText = p.weapons.map((w, i) => {
-      const isActive = w === p.currentWeapon;
-      return `[${i + 1}]${isActive ? '►' : ' '}${WEAPONS[w].name.substring(0, 8)}`;
-    }).join('  ');
-    ctx.fillText(slotText.length > 35 ? slotText.substring(0, 35) + '…' : slotText, 20, CANVAS_H - 18);
+    if (p.isLevi) {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillStyle = '#ff8800';
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText('🦷 SUPER LEVI', 20, CANVAS_H - 38);
+      ctx.font = '11px MedievalSharp';
+      ctx.fillStyle = '#ccaa88';
+      ctx.fillText('J:Devour  ↑+J:Shoot  Jump:Shockwave', 20, CANVAS_H - 18);
+    } else {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeStyle = weapon.color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillStyle = weapon.color;
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText(`⚔ ${weapon.name}`, 20, CANVAS_H - 38);
+      ctx.font = '11px MedievalSharp';
+      ctx.fillStyle = '#aaaaaa';
+      const slotText = p.weapons.map((w, i) => {
+        const isActive = w === p.currentWeapon;
+        return `[${i + 1}]${isActive ? '►' : ' '}${WEAPONS[w].name.substring(0, 8)}`;
+      }).join('  ');
+      ctx.fillText(slotText.length > 35 ? slotText.substring(0, 35) + '…' : slotText, 20, CANVAS_H - 18);
+    }
 
     // Direction indicator
     if (!s.level.isBossLevel) {
@@ -1534,18 +1693,17 @@ export function useGameLoop() {
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
       
       if (f.arrowPhase === 'none') {
-        // MASH J prompt
+        const isRC = s.level?.boss?.bossType === 'rotten_core';
         const pulseScale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
         ctx.save();
         ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 60);
         ctx.scale(pulseScale, pulseScale);
-        ctx.fillStyle = '#ffdd00';
+        ctx.fillStyle = isRC ? '#ff6600' : '#ffdd00';
         ctx.font = 'bold 36px MedievalSharp';
         ctx.textAlign = 'center';
-        ctx.fillText('MASH J TO FINISH!', 0, 0);
+        ctx.fillText(isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!', 0, 0);
         ctx.restore();
         
-        // Meter bar
         const meterW = 400;
         const meterH = 30;
         const meterX = (CANVAS_W - meterW) / 2;
@@ -1553,45 +1711,46 @@ export function useGameLoop() {
         
         ctx.fillStyle = '#000000aa';
         ctx.fillRect(meterX - 2, meterY - 2, meterW + 4, meterH + 4);
-        ctx.fillStyle = '#220000';
+        ctx.fillStyle = isRC ? '#001100' : '#220000';
         ctx.fillRect(meterX, meterY, meterW, meterH);
         
-        // Fill with gradient
         const fillW = meterW * (f.meter / 100);
         const meterGrad = ctx.createLinearGradient(meterX, 0, meterX + fillW, 0);
-        meterGrad.addColorStop(0, '#ff4400');
-        meterGrad.addColorStop(0.5, '#ffaa00');
-        meterGrad.addColorStop(1, '#ffdd00');
+        if (isRC) {
+          meterGrad.addColorStop(0, '#ff4400');
+          meterGrad.addColorStop(0.5, '#ff6600');
+          meterGrad.addColorStop(1, '#ff8800');
+        } else {
+          meterGrad.addColorStop(0, '#ff4400');
+          meterGrad.addColorStop(0.5, '#ffaa00');
+          meterGrad.addColorStop(1, '#ffdd00');
+        }
         ctx.fillStyle = meterGrad;
         ctx.fillRect(meterX, meterY, fillW, meterH);
         
-        // Meter glow
         if (f.meter > 50) {
-          ctx.shadowColor = '#ffaa00';
+          ctx.shadowColor = isRC ? '#ff6600' : '#ffaa00';
           ctx.shadowBlur = f.meter / 5;
-          ctx.strokeStyle = '#ffdd00';
+          ctx.strokeStyle = isRC ? '#ff8800' : '#ffdd00';
           ctx.lineWidth = 2;
           ctx.strokeRect(meterX, meterY, meterW, meterH);
           ctx.shadowBlur = 0;
         }
         
-        ctx.strokeStyle = '#ffaa44';
+        ctx.strokeStyle = isRC ? '#ff6644' : '#ffaa44';
         ctx.lineWidth = 2;
         ctx.strokeRect(meterX, meterY, meterW, meterH);
         
-        // Percentage text
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 16px MedievalSharp';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.floor(f.meter)}%`, CANVAS_W / 2, meterY + 22);
         
-        // Boss stunned indicator
         if (s.level?.boss) {
           const b = s.level.boss;
           const bx = b.x - camX;
-          // Stun stars around boss
           const t = Date.now() * 0.005;
-          ctx.fillStyle = '#ffdd00';
+          ctx.fillStyle = isRC ? '#44ff22' : '#ffdd00';
           ctx.font = '20px serif';
           ctx.textAlign = 'center';
           for (let i = 0; i < 5; i++) {
@@ -1602,61 +1761,61 @@ export function useGameLoop() {
           }
         }
       } else if (f.arrowPhase === 'flying') {
-        // Draw the legendary arrow
-        const ax = f.arrowX - camX;
-        const ay = f.arrowY;
-        
-        ctx.save();
-        // Arrow glow
-        ctx.shadowColor = '#ffdd00';
-        ctx.shadowBlur = 30;
-        
-        // Arrow body
-        ctx.fillStyle = '#ffdd00';
-        ctx.beginPath();
-        ctx.moveTo(ax + 40, ay);       // tip
-        ctx.lineTo(ax, ay - 6);        // top
-        ctx.lineTo(ax + 8, ay);        // notch top
-        ctx.lineTo(ax, ay + 6);        // bottom
-        ctx.closePath();
-        ctx.fill();
-        
-        // Arrow shaft
-        ctx.fillStyle = '#aa8844';
-        ctx.fillRect(ax - 30, ay - 2, 30, 4);
-        
-        // Fletching
-        ctx.fillStyle = '#ff4444';
-        ctx.beginPath();
-        ctx.moveTo(ax - 30, ay);
-        ctx.lineTo(ax - 40, ay - 8);
-        ctx.lineTo(ax - 25, ay);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(ax - 30, ay);
-        ctx.lineTo(ax - 40, ay + 8);
-        ctx.lineTo(ax - 25, ay);
-        ctx.fill();
-        
-        ctx.shadowBlur = 0;
-        ctx.restore();
-        
-        // "FROM SUPER ZACHERY 1" text flash
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.8;
-        ctx.font = 'bold 18px MedievalSharp';
-        ctx.textAlign = 'center';
-        ctx.fillText("ZACHERY'S ARROW!", CANVAS_W / 2, CANVAS_H / 2 - 80);
-        ctx.globalAlpha = 1;
+        const isRC = s.level?.boss?.bossType === 'rotten_core';
+        if (isRC) {
+          // Levi devour rush — player is already rendered, show "DEVOUR!" text
+          ctx.fillStyle = '#ff6600';
+          ctx.globalAlpha = 0.9;
+          ctx.font = 'bold 28px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText("SUPER LEVI DEVOURS!", CANVAS_W / 2, CANVAS_H / 2 - 80);
+          ctx.globalAlpha = 1;
+        } else {
+          // Draw the legendary arrow
+          const ax = f.arrowX - camX;
+          const ay = f.arrowY;
+          ctx.save();
+          ctx.shadowColor = '#ffdd00';
+          ctx.shadowBlur = 30;
+          ctx.fillStyle = '#ffdd00';
+          ctx.beginPath();
+          ctx.moveTo(ax + 40, ay);
+          ctx.lineTo(ax, ay - 6);
+          ctx.lineTo(ax + 8, ay);
+          ctx.lineTo(ax, ay + 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#aa8844';
+          ctx.fillRect(ax - 30, ay - 2, 30, 4);
+          ctx.fillStyle = '#ff4444';
+          ctx.beginPath();
+          ctx.moveTo(ax - 30, ay);
+          ctx.lineTo(ax - 40, ay - 8);
+          ctx.lineTo(ax - 25, ay);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(ax - 30, ay);
+          ctx.lineTo(ax - 40, ay + 8);
+          ctx.lineTo(ax - 25, ay);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.8;
+          ctx.font = 'bold 18px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText("ZACHERY'S ARROW!", CANVAS_W / 2, CANVAS_H / 2 - 80);
+          ctx.globalAlpha = 1;
+        }
       } else if (f.arrowPhase === 'impact' || f.arrowPhase === 'exploding') {
-        // White flash on impact
+        const isRC = s.level?.boss?.bossType === 'rotten_core';
         if (f.arrowPhase === 'impact' && f.explosionTimer < 5) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.8 - f.explosionTimer * 0.15})`;
+          const flashColor = isRC ? `rgba(68, 255, 34, ${0.8 - f.explosionTimer * 0.15})` : `rgba(255, 255, 255, ${0.8 - f.explosionTimer * 0.15})`;
+          ctx.fillStyle = flashColor;
           ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         }
         
-        // Draw arrow continuing through (if still visible)
-        if (f.arrowPhase === 'impact') {
+        if (f.arrowPhase === 'impact' && !isRC) {
           const ax = f.arrowX - camX;
           const ay = f.arrowY;
           ctx.save();
@@ -1676,26 +1835,26 @@ export function useGameLoop() {
           ctx.restore();
         }
         
-        // Explosion rings
         if (f.arrowPhase === 'exploding') {
           const bx = f.arrowTargetX - camX;
           const by = f.arrowTargetY;
           const progress = f.explosionTimer / 90;
+          const ringColors = isRC
+            ? ['#44ff2288', '#88ff4466', '#22aa1144']
+            : ['#ff440088', '#ffaa0066', '#ffdd0044'];
           
-          // Expanding rings
           for (let ring = 0; ring < 3; ring++) {
             const ringProgress = Math.min(1, (progress * 3 - ring * 0.3));
             if (ringProgress <= 0) continue;
-            ctx.strokeStyle = ring === 0 ? '#ff440088' : ring === 1 ? '#ffaa0066' : '#ffdd0044';
+            ctx.strokeStyle = ringColors[ring];
             ctx.lineWidth = 4 - ring;
             ctx.beginPath();
             ctx.arc(bx, by, ringProgress * 200, 0, Math.PI * 2);
             ctx.stroke();
           }
           
-          // Central glow fading
           ctx.globalAlpha = Math.max(0, 1 - progress);
-          ctx.fillStyle = '#ffdd00';
+          ctx.fillStyle = isRC ? '#44ff22' : '#ffdd00';
           ctx.beginPath();
           ctx.arc(bx, by, 30 * (1 - progress), 0, Math.PI * 2);
           ctx.fill();
