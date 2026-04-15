@@ -890,10 +890,7 @@ export function useGameLoop() {
             window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
           }
         }
-          }
-        }
       }
-
       // Boss damages player
       if (p.invincibleTimer <= 0) {
         if (
