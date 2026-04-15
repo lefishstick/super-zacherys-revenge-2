@@ -586,29 +586,34 @@ export function useGameLoop() {
         }
       }
 
-      // Player melee/AOE attack hits enemy
-      const leviDevourRange = 80;
+      const hasMegaChomp = p.leviAbilities.includes('mega_chomp');
+      const hasFrenzy = p.leviAbilities.includes('frenzy');
+      const leviDevourRange = hasMegaChomp ? 130 : 80;
+      const leviDevourDmg = hasMegaChomp ? 6 : 4;
       if (p.isLevi) {
         // Levi devour attack
-        if (p.isAttacking && p.attackTimer > 15) {
+        if (p.isAttacking && p.attackTimer > (hasFrenzy ? 8 : 15)) {
           const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
           const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < leviDevourRange) {
-            e.health -= 3;
-            e.velocityX = (p.facingRight ? 1 : -1) * 8;
-            e.velocityY = -3;
-            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 8);
+            e.health -= leviDevourDmg;
+            e.velocityX = (p.facingRight ? 1 : -1) * 10;
+            e.velocityY = -4;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 10);
             if (e.health <= 0) {
               e.isAlive = false;
               s.score += e.type === 'onion' ? 300 : 200;
-              p.devouredEnemies = Math.min(5, p.devouredEnemies + 1);
+              p.devouredEnemies = Math.min(hasMegaChomp ? 8 : 5, p.devouredEnemies + 1);
               // Devour effect — enemy gets sucked in
               spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 20);
               spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
-              if (Math.random() < 0.3) {
-                p.health = Math.min(p.maxHealth, p.health + 1);
+              // Frenzy: always heal on devour; otherwise 40% chance
+              if (hasFrenzy || Math.random() < 0.4) {
+                const healAmt = hasFrenzy ? 3 : 1;
+                p.health = Math.min(p.maxHealth, p.health + healAmt);
                 spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 10);
+              }
               }
             }
           }
