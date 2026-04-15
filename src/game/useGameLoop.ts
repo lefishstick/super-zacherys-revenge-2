@@ -53,7 +53,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -96,6 +96,8 @@ export function useGameLoop() {
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
+      isLevi: s.player?.isLevi ?? false,
+      devouredEnemies: s.player?.devouredEnemies ?? 0,
     };
   }, []);
 
