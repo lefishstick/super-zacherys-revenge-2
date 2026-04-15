@@ -528,31 +528,174 @@ export function useGameLoop() {
       const b = level.boss;
       b.attackCooldown--;
 
+      const isRottenCore = b.bossType === 'rotten_core';
+
       if (b.attackCooldown <= 0) {
-        const rng = Math.random();
-        if (rng < 0.4) {
-          b.attackType = 'charge';
-          b.direction = p.x < b.x ? -1 : 1;
-          b.velocityX = b.direction * 6;
-          b.attackCooldown = 90;
-        } else if (rng < 0.7) {
-          b.attackType = 'stomp';
-          b.velocityY = -15;
-          b.attackCooldown = 80;
+        if (isRottenCore) {
+          // ROTTEN CORE BOSS AI
+          const rng = Math.random();
+          if (b.phase === 1) {
+            // Phase 1: Ancient Tree — root attacks, ground slams
+            if (rng < 0.4) {
+              b.attackType = 'root_attack';
+              // Spawn root projectiles from ground
+              for (let i = 0; i < 3; i++) {
+                const rootX = p.x + (Math.random() - 0.5) * 200;
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 20, height: 20,
+                  velocityX: 0, velocityY: -8 - Math.random() * 4,
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+                spawnParticles(rootX, level.groundY - 10, '#44aa22', 5);
+              }
+              b.attackCooldown = 70;
+            } else if (rng < 0.7) {
+              b.attackType = 'stomp';
+              b.velocityY = -12;
+              b.attackCooldown = 80;
+            } else {
+              b.attackType = 'shoot';
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              s.projectiles.push({
+                x: b.x + b.width / 2, y: b.y + b.height / 2,
+                width: 18, height: 18,
+                velocityX: Math.cos(angle) * 6, velocityY: Math.sin(angle) * 6,
+                isPlayerProjectile: false, damage: 2, lifetime: 100,
+              });
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#66ff22', 8);
+              b.attackCooldown = 50;
+            }
+          } else if (b.phase === 2) {
+            // Phase 2: Corruption — lasers, toxic gas, ranged
+            if (rng < 0.3) {
+              b.attackType = 'laser';
+              // Fire laser beam (multiple fast projectiles in a line)
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              for (let i = 0; i < 5; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 12, height: 12,
+                  velocityX: Math.cos(angle) * (8 + i * 2), velocityY: Math.sin(angle) * (8 + i * 2),
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#44ffaa', 12);
+              b.attackCooldown = 60;
+            } else if (rng < 0.6) {
+              b.attackType = 'toxic_gas';
+              // Spread toxic gas projectiles
+              for (let i = 0; i < 6; i++) {
+                const a = (Math.PI * 2 / 6) * i;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 15, height: 15,
+                  velocityX: Math.cos(a) * 4, velocityY: Math.sin(a) * 4,
+                  isPlayerProjectile: false, damage: 1, lifetime: 80,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#88ff00', 15);
+              b.attackCooldown = 55;
+            } else {
+              b.attackType = 'root_attack';
+              for (let i = 0; i < 5; i++) {
+                const rootX = 100 + Math.random() * (level.width - 200);
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 20, height: 20,
+                  velocityX: 0, velocityY: -10 - Math.random() * 5,
+                  isPlayerProjectile: false, damage: 2, lifetime: 50,
+                });
+                spawnParticles(rootX, level.groundY - 10, '#44aa22', 3);
+              }
+              b.attackCooldown = 65;
+            }
+          } else {
+            // Phase 3: Exposed Core — everything + enemy spawns
+            if (rng < 0.25) {
+              b.attackType = 'spawn';
+              // Spawn enemies
+              const spawnType = Math.random() < 0.5 ? 'egg' : 'onion';
+              const aliveEnemies = level.enemies.filter(e => e.isAlive).length;
+              if (aliveEnemies < 4) {
+                const enemy: Enemy = {
+                  x: b.x + (Math.random() - 0.5) * 100,
+                  y: b.y + b.height - 70,
+                  width: 60, height: 70,
+                  velocityX: (Math.random() - 0.5) * 4,
+                  velocityY: -5,
+                  type: spawnType as 'egg' | 'onion',
+                  health: spawnType === 'onion' ? 4 : 3,
+                  maxHealth: spawnType === 'onion' ? 4 : 3,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                };
+                level.enemies.push(enemy);
+                spawnParticles(enemy.x + 30, enemy.y + 35, '#66ff22', 10);
+              }
+              b.attackCooldown = 40;
+            } else if (rng < 0.5) {
+              b.attackType = 'laser';
+              // Triple laser
+              for (let beam = -1; beam <= 1; beam++) {
+                const baseAngle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+                const angle = baseAngle + beam * 0.3;
+                for (let i = 0; i < 4; i++) {
+                  s.projectiles.push({
+                    x: b.x + b.width / 2, y: b.y + b.height / 2,
+                    width: 12, height: 12,
+                    velocityX: Math.cos(angle) * (7 + i * 2), velocityY: Math.sin(angle) * (7 + i * 2),
+                    isPlayerProjectile: false, damage: 3, lifetime: 60,
+                  });
+                }
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4422', 15);
+              b.attackCooldown = 50;
+            } else if (rng < 0.75) {
+              b.attackType = 'toxic_gas';
+              for (let i = 0; i < 10; i++) {
+                const a = (Math.PI * 2 / 10) * i;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 15, height: 15,
+                  velocityX: Math.cos(a) * 5, velocityY: Math.sin(a) * 5,
+                  isPlayerProjectile: false, damage: 2, lifetime: 70,
+                });
+              }
+              b.attackCooldown = 45;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 5;
+              b.attackCooldown = 60;
+            }
+          }
         } else {
-          b.attackType = 'shoot';
-          s.projectiles.push({
-            x: b.x + b.width / 2,
-            y: b.y + b.height / 2,
-            width: 15, height: 15,
-            velocityX: (p.x < b.x ? -1 : 1) * 7,
-            velocityY: -2,
-            isPlayerProjectile: false,
-            damage: 2,
-            lifetime: 120,
-          });
-          b.attackCooldown = 60;
-          spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 8);
+          // COLOSSUS BOSS AI (original)
+          const rng = Math.random();
+          if (rng < 0.4) {
+            b.attackType = 'charge';
+            b.direction = p.x < b.x ? -1 : 1;
+            b.velocityX = b.direction * 6;
+            b.attackCooldown = 90;
+          } else if (rng < 0.7) {
+            b.attackType = 'stomp';
+            b.velocityY = -15;
+            b.attackCooldown = 80;
+          } else {
+            b.attackType = 'shoot';
+            s.projectiles.push({
+              x: b.x + b.width / 2,
+              y: b.y + b.height / 2,
+              width: 15, height: 15,
+              velocityX: (p.x < b.x ? -1 : 1) * 7,
+              velocityY: -2,
+              isPlayerProjectile: false,
+              damage: 2,
+              lifetime: 120,
+            });
+            b.attackCooldown = 60;
+            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff4400', 8);
+          }
         }
       }
 
@@ -570,14 +713,32 @@ export function useGameLoop() {
           b.y = plat.y - b.height;
           b.velocityY = 0;
           if (b.attackType === 'stomp') {
-            spawnParticles(b.x + b.width / 2, b.y + b.height, '#886633', 20);
+            spawnParticles(b.x + b.width / 2, b.y + b.height, isRottenCore ? '#44aa22' : '#886633', 20);
             b.attackType = 'idle';
+            // Rotten Core stomp spawns root projectiles
+            if (isRottenCore) {
+              for (let i = 0; i < 4; i++) {
+                const rootX = b.x + b.width / 2 + (i - 1.5) * 80;
+                s.projectiles.push({
+                  x: rootX, y: level.groundY - 10,
+                  width: 18, height: 18,
+                  velocityX: 0, velocityY: -12,
+                  isPlayerProjectile: false, damage: 2, lifetime: 40,
+                });
+                spawnParticles(rootX, level.groundY, '#66ff22', 5);
+              }
+            }
           }
         }
       }
 
       if (b.x < 0) { b.x = 0; b.velocityX *= -1; }
       if (b.x > level.width - b.width) { b.x = level.width - b.width; b.velocityX *= -1; }
+
+      // Phase cutscene events for Rotten Core
+      const phaseEvents = isRottenCore
+        ? { 2: 'core_phase2', 3: 'core_phase3' }
+        : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
       // Player melee/AOE attack hits boss
       if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
@@ -601,13 +762,13 @@ export function useGameLoop() {
             b.phase = 3;
             if (!s.bossPhaseTriggered[3]) {
               s.bossPhaseTriggered[3] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
             }
           } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
             b.phase = 2;
             if (!s.bossPhaseTriggered[2]) {
               s.bossPhaseTriggered[2] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
             }
           }
         }
@@ -619,7 +780,7 @@ export function useGameLoop() {
           p.x < b.x + b.width && p.x + p.width > b.x &&
           p.y < b.y + b.height && p.y + p.height > b.y
         ) {
-          p.health -= 2;
+          p.health -= isRottenCore ? 3 : 2;
           p.invincibleTimer = 90;
           p.velocityX = (p.x < b.x ? -1 : 1) * 10;
           p.velocityY = -8;
