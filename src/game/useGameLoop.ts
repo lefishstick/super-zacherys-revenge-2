@@ -839,17 +839,19 @@ export function useGameLoop() {
               b.health = 0;
               startFinisher();
             }
+            const isRC = b.bossType === 'rotten_core';
+            const pe = isRC ? { 2: 'core_phase2', 3: 'core_phase3' } : { 2: 'boss_phase2', 3: 'boss_phase3' };
             if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
               b.phase = 3;
               if (!s.bossPhaseTriggered[3]) {
                 s.bossPhaseTriggered[3] = true;
-                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase3' }));
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[3] }));
               }
             } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
               b.phase = 2;
               if (!s.bossPhaseTriggered[2]) {
                 s.bossPhaseTriggered[2] = true;
-                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: 'boss_phase2' }));
+                window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[2] }));
               }
             }
             return false;
@@ -1093,6 +1095,66 @@ export function useGameLoop() {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    } else if (chapter === 5) {
+      // THE ROTTEN CORE — Deep underground, massive tree roots, green toxic glow
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#050a05');
+      skyGrad.addColorStop(0.3, '#0a1a08');
+      skyGrad.addColorStop(0.6, '#081508');
+      skyGrad.addColorStop(1, '#030a03');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Massive root system in background
+      ctx.strokeStyle = '#1a3310';
+      ctx.lineWidth = 12;
+      for (let i = 0; i < 8; i++) {
+        const rx = i * 300 - (camX * 0.1) % 600;
+        const sway = Math.sin(t * 0.001 + i * 2) * 10;
+        ctx.beginPath();
+        ctx.moveTo(rx, CANVAS_H);
+        ctx.bezierCurveTo(rx + sway + 40, CANVAS_H - 150, rx - sway + 20, CANVAS_H - 300, rx + sway, 0);
+        ctx.stroke();
+      }
+      // Toxic green glow pulsing
+      const toxicPulse = Math.sin(t * 0.003) * 0.5 + 0.5;
+      ctx.globalAlpha = toxicPulse * 0.06;
+      ctx.fillStyle = '#44ff22';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Green energy veins on walls
+      ctx.strokeStyle = '#44ff2288';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 12; i++) {
+        const vx = i * 200 - (camX * 0.2) % 400;
+        const pulse = Math.sin(t * 0.004 + i * 1.3) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 20, CANVAS_H - 200, vx - 15, CANVAS_H - 320, vx + 10, CANVAS_H - 450);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Floating toxic particles
+      ctx.fillStyle = '#66ff44';
+      ctx.globalAlpha = 0.2;
+      for (let i = 0; i < 20; i++) {
+        const px = (i * 150 + t * 0.015) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.025 + i * 60) % (CANVAS_H - 80));
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5 + Math.sin(t * 0.006 + i) * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Ground corruption cracks
+      ctx.strokeStyle = '#44ff2244';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 15; i++) {
+        const cx = i * 180 - (camX * 0.3) % 360;
+        ctx.beginPath();
+        ctx.moveTo(cx, CANVAS_H - 100);
+        ctx.lineTo(cx + (Math.sin(i * 3) * 20), CANVAS_H - 100 - 15 - Math.random() * 10);
+        ctx.stroke();
+      }
     }
   };
 
@@ -1125,10 +1187,12 @@ export function useGameLoop() {
     const groundColors = ch === 1 ? ['#2a4a1a','#1a3310','#0a1a05','#44aa22']
       : ch === 2 ? ['#1a1a3a','#151530','#0a0a1a','#4455aa']
       : ch === 3 ? ['#3a2a1a','#2a1a10','#1a0f05','#aa6622']
+      : ch === 5 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
       : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
     const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
       : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
       : ch === 3 ? ['#4a3a2a','#aa7733','#886622']
+      : ch === 5 ? ['#2a3a2a','#44aa22','#227711']
       : ['#3a2020','#aa3333','#882222'];
 
     // Draw platforms
