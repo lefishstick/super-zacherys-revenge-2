@@ -512,7 +512,24 @@ export function useGameLoop() {
       }
     }
 
-    // Attack hitbox calculations
+    // Levi ability pickup collision
+    for (const ap of level.leviAbilityPickups) {
+      if (ap.collected) continue;
+      if (
+        p.x < ap.x + ap.width && p.x + p.width > ap.x &&
+        p.y < ap.y + ap.height && p.y + p.height > ap.y
+      ) {
+        ap.collected = true;
+        if (!p.leviAbilities.includes(ap.ability)) {
+          p.leviAbilities.push(ap.ability);
+        }
+        const aDef = LEVI_ABILITIES[ap.ability];
+        spawnParticles(ap.x + ap.width / 2, ap.y + ap.height / 2, aDef.color, 30);
+        window.dispatchEvent(new CustomEvent('levi_ability_pickup', { detail: ap.ability }));
+      }
+    }
+
+
     const atkRange = weapon.range;
     const atkX = p.facingRight ? p.x + p.width : p.x - atkRange;
     const atkY = p.y;
