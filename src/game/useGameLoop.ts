@@ -296,7 +296,9 @@ export function useGameLoop() {
             if (s.player) {
               s.player.isLevi = true;
               s.player.devouredEnemies = 0;
-              s.player.health = s.player.maxHealth; // Full heal on swap
+              s.player.maxHealth = 20;
+              s.player.health = 20; // Full heal on swap
+              s.player.leviAbilities = [];
             }
             // Dispatch music change event
             window.dispatchEvent(new CustomEvent('switch_to_levi'));
