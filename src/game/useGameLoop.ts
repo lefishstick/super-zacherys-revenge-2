@@ -373,35 +373,55 @@ export function useGameLoop() {
     if (keys.has('z') || keys.has('j')) {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
-        p.attackTimer = weapon.speed;
         
-        if (weapon.isRanged && weapon.projectileSpeed) {
-          // Fire projectile
-          s.projectiles.push({
-            x: p.x + (p.facingRight ? p.width : -15),
-            y: p.y + p.height / 2 - 7,
-            width: 15, height: 15,
-            velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
-            velocityY: 0,
-            isPlayerProjectile: true,
-            damage: weapon.damage,
-            lifetime: 80,
-          });
-          spawnParticles(
-            p.x + (p.facingRight ? p.width : 0),
-            p.y + p.height / 2,
-            weapon.color, 6
-          );
-        } else if (weapon.aoeRadius) {
-          // AOE attack
-          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+        if (p.isLevi) {
+          // LEVI ATTACK: Devour or shoot devoured enemies
+          p.attackTimer = 20;
+          if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
+            // Shoot devoured enemy as projectile (hold up + attack)
+            p.devouredEnemies--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -20),
+              y: p.y + p.height / 2 - 10,
+              width: 25, height: 25,
+              velocityX: (p.facingRight ? 1 : -1) * 12,
+              velocityY: -2,
+              isPlayerProjectile: true,
+              damage: 5,
+              lifetime: 100,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 10);
+          } else {
+            // Devour attack — close range, high damage, eats enemies
+            spawnParticles(
+              p.x + (p.facingRight ? p.width + 15 : -15),
+              p.y + p.height / 2,
+              '#ff6600', 8
+            );
+          }
         } else {
-          // Melee attack
-          spawnParticles(
-            p.x + (p.facingRight ? p.width + 20 : -20),
-            p.y + p.height / 2,
-            weapon.color, 5
-          );
+          p.attackTimer = weapon.speed;
+          if (weapon.isRanged && weapon.projectileSpeed) {
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -15),
+              y: p.y + p.height / 2 - 7,
+              width: 15, height: 15,
+              velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: weapon.damage,
+              lifetime: 80,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, weapon.color, 6);
+          } else if (weapon.aoeRadius) {
+            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+          } else {
+            spawnParticles(
+              p.x + (p.facingRight ? p.width + 20 : -20),
+              p.y + p.height / 2,
+              weapon.color, 5
+            );
+          }
         }
       }
     }
