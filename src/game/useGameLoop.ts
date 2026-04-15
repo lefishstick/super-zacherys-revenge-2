@@ -1550,7 +1550,38 @@ export function useGameLoop() {
       ctx.restore();
     }
 
-    // Draw enemies
+    // Draw Levi ability pickups
+    for (const ap of s.level.leviAbilityPickups) {
+      if (ap.collected) continue;
+      const apx = ap.x - camX;
+      if (apx + ap.width < -50 || apx > CANVAS_W + 50) continue;
+      const aDef = LEVI_ABILITIES[ap.ability];
+      const t = Date.now() * 0.003;
+      const floatY = ap.y + Math.sin(t * 1.2 + ap.x) * 6;
+      ctx.save();
+      ctx.shadowColor = aDef.glowColor;
+      ctx.shadowBlur = 18 + Math.sin(t * 2) * 6;
+      ctx.fillStyle = aDef.color;
+      ctx.beginPath();
+      ctx.arc(apx + ap.width / 2, floatY + ap.height / 2, ap.width / 2 + 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Fang icon
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.9;
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🦷', apx + ap.width / 2, floatY + ap.height / 2 + 5);
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      // Label
+      ctx.fillStyle = aDef.color;
+      ctx.font = '10px MedievalSharp';
+      ctx.textAlign = 'center';
+      ctx.fillText(aDef.name, apx + ap.width / 2, floatY - 10);
+    }
+
+
     for (const e of s.level.enemies) {
       if (!e.isAlive) continue;
       const ex = e.x - camX;
