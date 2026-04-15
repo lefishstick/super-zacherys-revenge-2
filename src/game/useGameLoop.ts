@@ -1490,6 +1490,7 @@ export function useGameLoop() {
       6: '3-2: Pulsing Veins',
       7: '4-1: Corrupted Approach',
       8: '4-2: The Rotting Heart',
+      9: '5-1: The Rotten Core',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
