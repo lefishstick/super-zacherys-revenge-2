@@ -168,24 +168,22 @@ export function useGameLoop() {
           f.meter = Math.min(100, f.meter + 3.5);
           f.lastMashTime = Date.now();
           f.jWasUp = false;
-          // Shake feedback
           f.screenShake = 4;
           if (s.level.boss) {
+            const isRC = s.level.boss.bossType === 'rotten_core';
             spawnParticles(
               s.level.boss.x + s.level.boss.width / 2,
               s.level.boss.y + s.level.boss.height / 2,
-              f.meter > 70 ? '#ffdd00' : '#ff6600', 3
+              isRC ? (f.meter > 70 ? '#ff6600' : '#44ff22') : (f.meter > 70 ? '#ffdd00' : '#ff6600'), 3
             );
           }
         }
         if (!jDown) f.jWasUp = true;
         
-        // Meter drains slowly
         if (Date.now() - f.lastMashTime > 300) {
           f.meter = Math.max(0, f.meter - 0.4);
         }
         
-        // If meter full, launch the arrow!
         if (f.meter >= 100) {
           f.arrowPhase = 'flying';
           f.arrowX = -100;
@@ -196,7 +194,6 @@ export function useGameLoop() {
           f.arrowY = f.arrowTargetY;
         }
         
-        // Boss stays stunned, wobbling
         if (s.level.boss) {
           s.level.boss.velocityX = 0;
           s.level.boss.velocityY = 0;
