@@ -113,7 +113,7 @@ export const CUTSCENES: Record<string, Cutscene> = {
 
   chapter4_boss: {
     id: 'chapter4_boss',
-    chapterName: 'The Rotting Heart — Final Battle',
+    chapterName: 'The Rotting Heart — Boss Battle',
     lines: [
       { speaker: 'narrator', text: 'The ground shakes. Something rises from the corrupted earth.' },
       { speaker: 'narrator', text: 'The Rotten Colossus emerges — massive, decayed, mechanical-organic.' },
@@ -123,29 +123,16 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
-  boss_phase1: {
-    id: 'boss_phase1',
-    lines: [
-      { speaker: 'colossus', text: 'FEEL… WHAT YOU CREATED.', style: 'distorted' },
-    ],
-  },
-
-  boss_phase2: {
-    id: 'boss_phase2',
-    lines: [
-      { speaker: 'colossus', text: 'WE WERE… ALIVE.', style: 'distorted' },
-      { speaker: 'zachery', text: 'I didn\'t know—!' },
-      { speaker: 'colossus', text: 'YOU DIDN\'T CARE.', style: 'distorted' },
-    ],
-  },
-
-  boss_phase3: {
-    id: 'boss_phase3',
-    lines: [
-      { speaker: 'colossus', text: 'END… THIS…', style: 'distorted' },
-      { speaker: 'zachery', text: '...I will.', style: 'whisper' },
-    ],
-  },
+  boss_phase1: { id: 'boss_phase1', lines: [{ speaker: 'colossus', text: 'FEEL… WHAT YOU CREATED.', style: 'distorted' }] },
+  boss_phase2: { id: 'boss_phase2', lines: [
+    { speaker: 'colossus', text: 'WE WERE… ALIVE.', style: 'distorted' },
+    { speaker: 'zachery', text: 'I didn\'t know—!' },
+    { speaker: 'colossus', text: 'YOU DIDN\'T CARE.', style: 'distorted' },
+  ]},
+  boss_phase3: { id: 'boss_phase3', lines: [
+    { speaker: 'colossus', text: 'END… THIS…', style: 'distorted' },
+    { speaker: 'zachery', text: '...I will.', style: 'whisper' },
+  ]},
 
   // ═══════════════════════════════════════════
   // LEVI TAKES OVER — After Colossus Defeat
@@ -172,33 +159,73 @@ export const CUTSCENES: Record<string, Cutscene> = {
   },
 
   // ═══════════════════════════════════════════
-  // CHAPTER 5: THE ROTTEN CORE — LEVI'S CHAPTER
+  // CHAPTER 5: LEVI'S DESCENT
   // ═══════════════════════════════════════════
 
   chapter5_start: {
     id: 'chapter5_start',
-    chapterName: 'Chapter 5: The Rotten Core',
+    chapterName: 'Chapter 5: The Descent',
     lines: [
-      { speaker: 'narrator', text: 'Super Levi descends into the deepest chamber of the corrupted forest.' },
-      { speaker: 'narrator', text: 'The air is thick with toxic energy. Roots of metal and flesh intertwine everywhere.' },
-      { speaker: 'levi', text: 'Smells terrible down here. Kinda making me hungry though.' },
-      { speaker: 'narrator', text: 'And then… silence. An unnatural, absolute silence.' },
-      { speaker: 'levi', text: 'Alright big tree... let\'s do this.' },
+      { speaker: 'narrator', text: 'Super Levi descends deeper into the corrupted underground.' },
+      { speaker: 'narrator', text: 'The air grows thick. The enemies grow stronger. But so does Levi.' },
+      { speaker: 'levi', text: 'These things are tougher down here. Good — I was getting bored.' },
+      { speaker: 'narrator', text: 'His hunger grows with every step. Every devoured enemy fuels his power.' },
     ],
   },
 
+  chapter5_mid: {
+    id: 'chapter5_mid',
+    lines: [
+      { speaker: 'narrator', text: 'The tunnels twist deeper. Toxic fumes rise from cracks in the earth.' },
+      { speaker: 'levi', text: 'Something\'s different down here. The enemies are… dripping with something.' },
+      { speaker: 'narrator', text: 'Acid pools form where corrupted enemies fall. The Core\'s poison is everywhere.' },
+      { speaker: 'levi', text: 'If I can eat their acid... maybe I can USE it.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 6: THE LIVING FACTORY
+  // ═══════════════════════════════════════════
+
+  chapter6_start: {
+    id: 'chapter6_start',
+    chapterName: 'Chapter 6: The Living Factory',
+    lines: [
+      { speaker: 'narrator', text: 'The tunnels open into an enormous cavern — a factory of flesh and steel.' },
+      { speaker: 'narrator', text: 'Conveyor belts of organic matter churn. This is where the Core makes its army.' },
+      { speaker: 'levi', text: 'So this is where all those MechEggs come from. Gross.' },
+      { speaker: 'levi', text: '...but also kind of delicious-looking?' },
+      { speaker: 'narrator', text: 'The factory pulses with a heartbeat. The Core knows Levi is close.' },
+    ],
+  },
+
+  chapter6_mid: {
+    id: 'chapter6_mid',
+    lines: [
+      { speaker: 'narrator', text: 'Levi reaches the factory\'s central chamber. Massive vats of glowing liquid bubble.' },
+      { speaker: 'core', text: 'YOU... CONSUME MY CHILDREN?', style: 'distorted' },
+      { speaker: 'levi', text: 'Oh, you can talk? Cool. Yeah, they\'re pretty tasty actually.' },
+      { speaker: 'core', text: 'I WILL MAKE AN ARMY FROM YOUR BONES.', style: 'distorted' },
+      { speaker: 'levi', text: 'Bold talk from a tree that can\'t move. 😤' },
+      { speaker: 'narrator', text: 'The factory shudders. The Core is preparing something.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 7: THE ROTTEN CORE — FINAL BOSS
+  // ═══════════════════════════════════════════
+
   rotten_core_intro: {
     id: 'rotten_core_intro',
-    chapterName: 'The Heart Tree Awakens',
+    chapterName: 'Chapter 7: The Rotten Core',
     lines: [
-      { speaker: 'narrator', text: 'The ground begins to tremble. Roots burst through the earth around Levi.' },
+      { speaker: 'narrator', text: 'The factory collapses behind Levi. He enters the deepest chamber.' },
       { speaker: 'narrator', text: 'What he thought was terrain… begins to MOVE.' },
       { speaker: 'narrator', text: 'Eyes ignite with sickly green light. Mechanical parts grind to life.' },
-      { speaker: 'narrator', text: 'The Heart Tree — once the source of all life in this forest — has become something else.' },
-      { speaker: 'core', text: 'ANOTHER ONE? YOU ARE NOT... THE ONE WHO CAME BEFORE.', style: 'distorted' },
-      { speaker: 'levi', text: 'Nah. I\'m worse. I\'m HUNGRY.' },
-      { speaker: 'core', text: 'FOOLISH... MORSEL.', style: 'distorted' },
-      { speaker: 'levi', text: 'We\'ll see who\'s the morsel here.' },
+      { speaker: 'narrator', text: 'The Heart Tree — once the source of all life — has become something else.' },
+      { speaker: 'core', text: 'YOU DEVOURED MY ARMY. MY FACTORY. MY CHILDREN.', style: 'distorted' },
+      { speaker: 'core', text: 'NOW I WILL DEVOUR YOU.', style: 'distorted' },
+      { speaker: 'levi', text: 'Nah. Only one of us gets to eat today. And I skipped breakfast.' },
     ],
   },
 
@@ -230,75 +257,102 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'narrator', text: 'He DEVOURS the Rotten Core whole — roots, metal, corruption and all.' },
       { speaker: 'narrator', text: 'The green glow fades from the forest. Mechanical parts crumble to dust.' },
       { speaker: 'narrator', text: 'The forest falls silent. Not the unnatural silence of corruption — but the peaceful quiet of healing.' },
-      { speaker: 'levi', text: '*burp* ...that was a lot.' },
+      { speaker: 'levi', text: '*burp* ...that was a LOT.' },
       { speaker: 'narrator', text: 'Levi carries Zachery out of the cavern. New growth pushes through the rust.' },
       { speaker: 'zachery', text: 'You actually ate it. The whole thing.', style: 'whisper' },
       { speaker: 'levi', text: 'I told you. Never underestimate my appetite.' },
-      { speaker: 'narrator', text: 'The forest breathes again. Two heroes, one legacy.' },
-      { speaker: 'narrator', text: 'But deep underground… something stirs in Levi\'s stomach…' },
-      { speaker: 'levi', text: '...was that a bad idea?' },
-      { speaker: 'narrator', text: '...to be continued?' },
+      { speaker: 'narrator', text: 'The forest breathes again. Two heroes. One legacy.' },
+      { speaker: 'narrator', text: '...' },
+      { speaker: 'narrator', text: 'But deep underground… something stirs.' },
+      { speaker: 'narrator', text: 'The roots they destroyed were connected to something ELSE. Something far older.' },
+      { speaker: 'narrator', text: 'And inside Levi\'s stomach… a faint green pulse begins to glow.' },
+      { speaker: 'levi', text: '...uh, Zachery? I don\'t feel so good.' },
+      { speaker: 'zachery', text: '...Levi?', style: 'whisper' },
+      { speaker: 'narrator', text: 'The screen goes dark. A deep rumble echoes through the earth.' },
+      { speaker: 'narrator', text: 'TO BE CONTINUED...' },
     ],
   },
 
   // ═══════════════════════════════════════════
-  // WEAPON DISCOVERY CUTSCENES
+  // WEAPON / ABILITY DISCOVERY CUTSCENES
   // ═══════════════════════════════════════════
 
   weapon_vine_whip: {
-    id: 'weapon_vine_whip',
-    title: 'New Weapon Acquired',
-    chapterName: 'Vine Whip',
+    id: 'weapon_vine_whip', title: 'New Weapon Acquired', chapterName: 'Vine Whip',
     lines: [
       { speaker: 'narrator', text: 'Among the mechanical roots, a living vine still pulses with ancient life.' },
       { speaker: 'narrator', text: 'It reaches out to Zachery — not as a threat, but as an offering.' },
       { speaker: 'zachery', text: 'It\'s still alive… fighting the corruption from within.' },
-      { speaker: 'narrator', text: 'The vine coils around his arm, thorns extending outward. A symbiotic bond.' },
-      { speaker: 'zachery', text: 'Together, then.' },
       { speaker: 'narrator', text: 'Vine Whip: Extended reach, lashes enemies from a distance. Press 1-2 to switch weapons.' },
     ],
   },
 
   weapon_static_bolt: {
-    id: 'weapon_static_bolt',
-    title: 'New Weapon Acquired',
-    chapterName: 'Static Bolt',
+    id: 'weapon_static_bolt', title: 'New Weapon Acquired', chapterName: 'Static Bolt',
     lines: [
       { speaker: 'narrator', text: 'Deep in the fog, a fractured conduit sparks with unstable energy.' },
-      { speaker: 'narrator', text: 'The static that distorts reality here is raw, chaotic power.' },
       { speaker: 'zachery', text: 'If I can channel this…' },
-      { speaker: 'narrator', text: 'Zachery plunges his hand into the conduit. Pain — then control.' },
-      { speaker: 'voice', text: 'THAT POWER… IS NOT YOURS.', style: 'distorted' },
-      { speaker: 'zachery', text: 'It is now.' },
       { speaker: 'narrator', text: 'Static Bolt: Fires ranged energy projectiles. Effective at distance.' },
     ],
   },
 
   weapon_iron_fist: {
-    id: 'weapon_iron_fist',
-    title: 'New Weapon Acquired',
-    chapterName: 'Iron Fist',
+    id: 'weapon_iron_fist', title: 'New Weapon Acquired', chapterName: 'Iron Fist',
     lines: [
       { speaker: 'narrator', text: 'A fallen war machine lies crumpled in the metal tunnels. Its arm still intact.' },
-      { speaker: 'narrator', text: 'The gauntlet hums with residual power — built for destruction.' },
       { speaker: 'zachery', text: 'Heavy… but it hits like nothing else.' },
-      { speaker: 'narrator', text: 'He rips the gauntlet free. The machine\'s last gift to the living.' },
       { speaker: 'narrator', text: 'Iron Fist: Devastating damage, slower attack speed. Crushes armored foes.' },
     ],
   },
 
   weapon_corruption_purge: {
-    id: 'weapon_corruption_purge',
-    title: 'New Ability Acquired',
-    chapterName: 'Corruption Purge',
+    id: 'weapon_corruption_purge', title: 'New Ability Acquired', chapterName: 'Corruption Purge',
     lines: [
       { speaker: 'narrator', text: 'At the threshold of the Rotting Heart, the corruption is overwhelming.' },
-      { speaker: 'narrator', text: 'But deep within Zachery, something resonates — a memory of what was lost.' },
-      { speaker: 'zachery', text: 'I remember now. I was part of this. I helped create it.', style: 'whisper' },
-      { speaker: 'narrator', text: 'Guilt becomes power. Regret becomes a weapon.' },
       { speaker: 'zachery', text: 'Then I\'ll use it to undo what I\'ve done.' },
-      { speaker: 'narrator', text: 'A wave of pure energy erupts from within him — the Corruption Purge.' },
       { speaker: 'narrator', text: 'Corruption Purge: Area-of-effect blast that damages all nearby enemies.' },
+    ],
+  },
+
+  // ═══ LEVI ABILITY CUTSCENES ═══
+
+  ability_mega_chomp: {
+    id: 'ability_mega_chomp', title: 'New Ability!', chapterName: 'Mega Chomp',
+    lines: [
+      { speaker: 'narrator', text: 'Levi tears into a particularly large MechEgg. Something inside it... resonates.' },
+      { speaker: 'narrator', text: 'His jaw aches, then EXPANDS. His bite force triples.' },
+      { speaker: 'levi', text: 'Whoa. I can eat even MORE now.' },
+      { speaker: 'narrator', text: 'Mega Chomp: Greatly increased devour range and damage. Stores more enemies.' },
+    ],
+  },
+
+  ability_toxic_spit: {
+    id: 'ability_toxic_spit', title: 'New Ability!', chapterName: 'Toxic Spit',
+    lines: [
+      { speaker: 'narrator', text: 'The acid from devoured enemies pools in Levi\'s stomach.' },
+      { speaker: 'narrator', text: 'Instead of harming him, it mutates. His body adapts.' },
+      { speaker: 'levi', text: 'Oh that\'s nasty. But also... useful.' },
+      { speaker: 'narrator', text: 'Toxic Spit: Press Down + J to fire acid projectiles. Ranged attack!' },
+    ],
+  },
+
+  ability_belly_slam: {
+    id: 'ability_belly_slam', title: 'New Ability!', chapterName: 'Belly Slam',
+    lines: [
+      { speaker: 'narrator', text: 'Levi\'s body feels heavier. Denser. The ground cracks where he lands.' },
+      { speaker: 'narrator', text: 'All those devoured enemies have given him mass. Terrible, devastating mass.' },
+      { speaker: 'levi', text: 'I\'m not fat. I\'m POWERFUL.' },
+      { speaker: 'narrator', text: 'Belly Slam: Jump shockwave now has MASSIVE range and damage!' },
+    ],
+  },
+
+  ability_frenzy: {
+    id: 'ability_frenzy', title: 'New Ability!', chapterName: 'Feeding Frenzy',
+    lines: [
+      { speaker: 'narrator', text: 'Something snaps inside Levi. His hunger becomes RAGE.' },
+      { speaker: 'narrator', text: 'His eyes glow orange. His attacks become a blur of teeth and fury.' },
+      { speaker: 'levi', text: 'I\'M. STILL. HUNGRY.' },
+      { speaker: 'narrator', text: 'Feeding Frenzy: Attack speed doubled! Devour always heals 3 HP!' },
     ],
   },
 };
@@ -313,7 +367,11 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   6: ['chapter3_mid'],
   7: ['chapter3_end', 'chapter4_start'],
   8: ['chapter4_boss'],
-  9: ['chapter5_start', 'rotten_core_intro'],
+  9: ['chapter5_start'],
+  10: ['chapter5_mid'],
+  11: ['chapter6_start'],
+  12: ['chapter6_mid'],
+  13: ['rotten_core_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up
@@ -322,6 +380,14 @@ export const WEAPON_CUTSCENES: Record<string, string> = {
   static_bolt: 'weapon_static_bolt',
   iron_fist: 'weapon_iron_fist',
   corruption_purge: 'weapon_corruption_purge',
+};
+
+// Levi ability cutscenes
+export const LEVI_ABILITY_CUTSCENES: Record<string, string> = {
+  mega_chomp: 'ability_mega_chomp',
+  toxic_spit: 'ability_toxic_spit',
+  belly_slam: 'ability_belly_slam',
+  frenzy: 'ability_frenzy',
 };
 
 export const VICTORY_CUTSCENE = 'ending';
