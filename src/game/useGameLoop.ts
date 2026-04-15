@@ -1050,7 +1050,7 @@ export function useGameLoop() {
           ctx.globalAlpha = 1;
         }
       }
-    } else {
+    } else if (chapter === 4) {
       // ROTTING HEART — Flesh & metal, grotesque organic-mechanical
       const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
       skyGrad.addColorStop(0, '#1a0505');
