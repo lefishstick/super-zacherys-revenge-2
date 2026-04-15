@@ -7,6 +7,7 @@ import eggImg from '@/assets/eggEnemy.png';
 import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
 import rottenCoreImg from '/images/rotten-core.png';
+import leviImg from '/images/levi.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
