@@ -1684,24 +1684,30 @@ export function useGameLoop() {
       6: '3-2: Pulsing Veins',
       7: '4-1: Corrupted Approach',
       8: '4-2: The Rotting Heart',
-      9: '5-1: The Rotten Core',
+      9: '5-1: The Descent',
+      10: '5-2: Toxic Tunnels',
+      11: '6-1: The Living Factory',
+      12: '6-2: Approach to the Core',
+      13: '7-1: The Rotten Core',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Weapon HUD (bottom left)
     if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
-      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillRect(10, CANVAS_H - 60, 280, 50);
       ctx.strokeStyle = '#ff6600';
       ctx.lineWidth = 2;
-      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeRect(10, CANVAS_H - 60, 280, 50);
       ctx.fillStyle = '#ff8800';
       ctx.font = 'bold 14px MedievalSharp';
       ctx.textAlign = 'left';
       ctx.fillText('🦷 SUPER LEVI', 20, CANVAS_H - 38);
-      ctx.font = '11px MedievalSharp';
+      ctx.font = '10px MedievalSharp';
       ctx.fillStyle = '#ccaa88';
-      ctx.fillText('J:Devour  ↑+J:Shoot  Jump:Shockwave', 20, CANVAS_H - 18);
+      const controls = ['J:Devour', '↑+J:Shoot', 'Jump:Shockwave'];
+      if (p.leviAbilities.includes('toxic_spit')) controls.push('↓+J:Spit');
+      ctx.fillText(controls.join('  '), 20, CANVAS_H - 18);
     } else {
       ctx.fillStyle = '#000000aa';
       ctx.fillRect(10, CANVAS_H - 60, 220, 50);
