@@ -529,7 +529,33 @@ export function useGameLoop() {
       }
 
       // Player melee/AOE attack hits enemy
-      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+      const leviDevourRange = 80;
+      if (p.isLevi) {
+        // Levi devour attack
+        if (p.isAttacking && p.attackTimer > 15) {
+          const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
+          const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < leviDevourRange) {
+            e.health -= 3;
+            e.velocityX = (p.facingRight ? 1 : -1) * 8;
+            e.velocityY = -3;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 8);
+            if (e.health <= 0) {
+              e.isAlive = false;
+              s.score += e.type === 'onion' ? 300 : 200;
+              p.devouredEnemies = Math.min(5, p.devouredEnemies + 1);
+              // Devour effect — enemy gets sucked in
+              spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 20);
+              spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+              if (Math.random() < 0.3) {
+                p.health = Math.min(p.maxHealth, p.health + 1);
+                spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 10);
+              }
+            }
+          }
+        }
+      } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
         let hit = false;
         if (isAOE) {
           const dx = (e.x + e.width / 2) - aoeCenterX;
@@ -548,7 +574,6 @@ export function useGameLoop() {
             e.isAlive = false;
             s.score += e.type === 'onion' ? 300 : 200;
             spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
-            // 40% chance to drop health
             if (Math.random() < 0.4) {
               level.healthPickups.push({
                 x: e.x + e.width / 2 - 12, y: e.y + e.height / 2 - 12,
