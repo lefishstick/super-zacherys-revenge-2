@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameLoop } from '@/game/useGameLoop';
-import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE, WEAPON_CUTSCENES } from '@/game/cutscenes';
+import { CUTSCENES, LEVEL_CUTSCENE_BEFORE, VICTORY_CUTSCENE, WEAPON_CUTSCENES, LEVI_ABILITY_CUTSCENES } from '@/game/cutscenes';
 import { Cutscene } from '@/game/types';
 import TitleScreen from './TitleScreen';
 import GameOverScreen from './GameOverScreen';
@@ -141,6 +141,23 @@ const GameCanvas = () => {
     };
     window.addEventListener('weapon_pickup' as any, handler);
     return () => window.removeEventListener('weapon_pickup' as any, handler);
+  }, [setGameStateTo]);
+
+  // Handle Levi ability pickup cutscenes
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      const cutsceneId = LEVI_ABILITY_CUTSCENES[e.detail];
+      if (cutsceneId) {
+        const scene = CUTSCENES[cutsceneId];
+        if (scene) {
+          setCutsceneQueue([scene]);
+          setShowCutscene(true);
+          setGameStateTo('cutscene');
+        }
+      }
+    };
+    window.addEventListener('levi_ability_pickup' as any, handler);
+    return () => window.removeEventListener('levi_ability_pickup' as any, handler);
   }, [setGameStateTo]);
 
   const handleCutsceneComplete = useCallback(() => {

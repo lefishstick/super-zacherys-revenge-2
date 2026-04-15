@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES } from './types';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -85,19 +85,23 @@ export function useGameLoop() {
     s.particles = [];
     s.cameraX = 0;
     s.transitioning = false;
+    const isLevi = s.player?.isLevi ?? false;
+    const leviMaxHP = 20;
+    const zachMaxHP = 10;
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
       velocityX: 0, velocityY: 0,
-      health: s.player?.health ?? 10,
-      maxHealth: 10,
+      health: s.player?.health ?? (isLevi ? leviMaxHP : zachMaxHP),
+      maxHealth: isLevi ? leviMaxHP : zachMaxHP,
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
-      isLevi: s.player?.isLevi ?? false,
+      isLevi,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
+      leviAbilities: s.player?.leviAbilities ?? [],
     };
   }, []);
 
@@ -292,7 +296,9 @@ export function useGameLoop() {
             if (s.player) {
               s.player.isLevi = true;
               s.player.devouredEnemies = 0;
-              s.player.health = s.player.maxHealth; // Full heal on swap
+              s.player.maxHealth = 20;
+              s.player.health = 20; // Full heal on swap
+              s.player.leviAbilities = [];
             }
             // Dispatch music change event
             window.dispatchEvent(new CustomEvent('switch_to_levi'));
@@ -355,14 +361,17 @@ export function useGameLoop() {
       p.isJumping = true;
       // Levi's jump shockwave
       if (p.isLevi) {
-        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 15);
+        const hasBellySlam = p.leviAbilities.includes('belly_slam');
+        const shockRadius = hasBellySlam ? 200 : 120;
+        const shockDmg = hasBellySlam ? 5 : 3;
+        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', hasBellySlam ? 25 : 15);
         // Damage nearby enemies with shockwave
         for (const e of level.enemies) {
           if (!e.isAlive) continue;
           const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
           const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
-          if (Math.sqrt(dx * dx + dy * dy) < 120) {
-            e.health -= 2;
+          if (Math.sqrt(dx * dx + dy * dy) < shockRadius) {
+            e.health -= shockDmg;
             e.velocityY = -8;
             e.velocityX = dx > 0 ? 5 : -5;
             spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff8800', 8);
@@ -393,19 +402,33 @@ export function useGameLoop() {
         p.isAttacking = true;
         
         if (p.isLevi) {
-          // LEVI ATTACK: Devour or shoot devoured enemies
-          p.attackTimer = 20;
-          if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
+          // LEVI ATTACK: Devour, shoot devoured, or toxic spit
+          const hasFrenzy = p.leviAbilities.includes('frenzy');
+          p.attackTimer = hasFrenzy ? 12 : 20;
+          if (p.leviAbilities.includes('toxic_spit') && (keys.has('arrowdown') || keys.has('s'))) {
+            // Toxic spit — ranged acid attack
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -20),
+              y: p.y + p.height / 2 - 10,
+              width: 20, height: 20,
+              velocityX: (p.facingRight ? 1 : -1) * 10,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: 4,
+              lifetime: 80,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#88ff00', 10);
+          } else if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
             // Shoot devoured enemy as projectile (hold up + attack)
             p.devouredEnemies--;
             s.projectiles.push({
               x: p.x + (p.facingRight ? p.width : -20),
               y: p.y + p.height / 2 - 10,
               width: 25, height: 25,
-              velocityX: (p.facingRight ? 1 : -1) * 12,
+              velocityX: (p.facingRight ? 1 : -1) * 14,
               velocityY: -2,
               isPlayerProjectile: true,
-              damage: 5,
+              damage: 8,
               lifetime: 100,
             });
             spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 10);
@@ -506,7 +529,24 @@ export function useGameLoop() {
       }
     }
 
-    // Attack hitbox calculations
+    // Levi ability pickup collision
+    for (const ap of level.leviAbilityPickups) {
+      if (ap.collected) continue;
+      if (
+        p.x < ap.x + ap.width && p.x + p.width > ap.x &&
+        p.y < ap.y + ap.height && p.y + p.height > ap.y
+      ) {
+        ap.collected = true;
+        if (!p.leviAbilities.includes(ap.ability)) {
+          p.leviAbilities.push(ap.ability);
+        }
+        const aDef = LEVI_ABILITIES[ap.ability];
+        spawnParticles(ap.x + ap.width / 2, ap.y + ap.height / 2, aDef.color, 30);
+        window.dispatchEvent(new CustomEvent('levi_ability_pickup', { detail: ap.ability }));
+      }
+    }
+
+
     const atkRange = weapon.range;
     const atkX = p.facingRight ? p.x + p.width : p.x - atkRange;
     const atkY = p.y;
@@ -546,28 +586,32 @@ export function useGameLoop() {
         }
       }
 
-      // Player melee/AOE attack hits enemy
-      const leviDevourRange = 80;
+      const hasMegaChomp = p.leviAbilities.includes('mega_chomp');
+      const hasFrenzy = p.leviAbilities.includes('frenzy');
+      const leviDevourRange = hasMegaChomp ? 130 : 80;
+      const leviDevourDmg = hasMegaChomp ? 6 : 4;
       if (p.isLevi) {
         // Levi devour attack
-        if (p.isAttacking && p.attackTimer > 15) {
+        if (p.isAttacking && p.attackTimer > (hasFrenzy ? 8 : 15)) {
           const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
           const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < leviDevourRange) {
-            e.health -= 3;
-            e.velocityX = (p.facingRight ? 1 : -1) * 8;
-            e.velocityY = -3;
-            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 8);
+            e.health -= leviDevourDmg;
+            e.velocityX = (p.facingRight ? 1 : -1) * 10;
+            e.velocityY = -4;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff6600', 10);
             if (e.health <= 0) {
               e.isAlive = false;
               s.score += e.type === 'onion' ? 300 : 200;
-              p.devouredEnemies = Math.min(5, p.devouredEnemies + 1);
+              p.devouredEnemies = Math.min(hasMegaChomp ? 8 : 5, p.devouredEnemies + 1);
               // Devour effect — enemy gets sucked in
               spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 20);
               spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
-              if (Math.random() < 0.3) {
-                p.health = Math.min(p.maxHealth, p.health + 1);
+              // Frenzy: always heal on devour; otherwise 40% chance
+              if (hasFrenzy || Math.random() < 0.4) {
+                const healAmt = hasFrenzy ? 3 : 1;
+                p.health = Math.min(p.maxHealth, p.health + healAmt);
                 spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 10);
               }
             }
@@ -841,13 +885,15 @@ export function useGameLoop() {
       // Player attack hits boss
       const bossHitCheck = () => {
         if (p.isLevi) {
-          // Levi devour attack on boss
-          if (p.isAttacking && p.attackTimer > 15) {
+          // Levi devour attack on boss — massive damage
+          const hasMC = p.leviAbilities.includes('mega_chomp');
+          const hasFr = p.leviAbilities.includes('frenzy');
+          if (p.isAttacking && p.attackTimer > (hasFr ? 8 : 15)) {
             const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
             const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
-            if (Math.sqrt(dx * dx + dy * dy) < 100) {
-              b.health -= 3;
-              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 10);
+            if (Math.sqrt(dx * dx + dy * dy) < (hasMC ? 140 : 100)) {
+              b.health -= hasMC ? 6 : 4;
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 12);
               return true;
             }
           }
@@ -1272,6 +1318,89 @@ export function useGameLoop() {
         ctx.lineTo(cx + (Math.sin(i * 3) * 20), CANVAS_H - 100 - 15 - Math.random() * 10);
         ctx.stroke();
       }
+    } else if (chapter === 6) {
+      // THE LIVING FACTORY — Industrial bio-mechanical horror
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0a0a0f');
+      skyGrad.addColorStop(0.3, '#151520');
+      skyGrad.addColorStop(0.6, '#1a1520');
+      skyGrad.addColorStop(1, '#0a0808');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Conveyor belt lines
+      ctx.strokeStyle = '#333340';
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 15; i++) {
+        const gx = i * 160 - (camX * 0.15) % 320;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx + 30, CANVAS_H - 100);
+        ctx.stroke();
+      }
+      // Orange molten veins
+      ctx.strokeStyle = '#ff440066';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 10; i++) {
+        const vx = i * 250 - (camX * 0.2) % 500;
+        const pulse = Math.sin(t * 0.003 + i * 1.7) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 30, CANVAS_H - 180, vx - 20, CANVAS_H - 280, vx + 15, CANVAS_H - 400);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Sparks & embers
+      ctx.fillStyle = '#ff6600';
+      for (let i = 0; i < 12; i++) {
+        const px = (i * 200 + t * 0.02) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.04 + i * 50) % (CANVAS_H - 80));
+        ctx.globalAlpha = 0.3 + Math.sin(t * 0.008 + i) * 0.2;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (chapter === 7) {
+      // THE ROTTEN CORE CHAMBER — Final boss arena
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#030803');
+      skyGrad.addColorStop(0.3, '#0a1a08');
+      skyGrad.addColorStop(0.5, '#081508');
+      skyGrad.addColorStop(1, '#020502');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Massive pulsing roots
+      ctx.strokeStyle = '#1a3310';
+      ctx.lineWidth = 16;
+      for (let i = 0; i < 10; i++) {
+        const rx = i * 250 - (camX * 0.08) % 500;
+        const sway = Math.sin(t * 0.001 + i * 1.8) * 12;
+        ctx.beginPath();
+        ctx.moveTo(rx, CANVAS_H);
+        ctx.bezierCurveTo(rx + sway + 50, CANVAS_H - 180, rx - sway + 25, CANVAS_H - 350, rx + sway, -50);
+        ctx.stroke();
+      }
+      // Intense toxic glow
+      const toxicPulse = Math.sin(t * 0.004) * 0.5 + 0.5;
+      ctx.globalAlpha = toxicPulse * 0.08;
+      ctx.fillStyle = '#44ff22';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = toxicPulse * 0.04;
+      ctx.fillStyle = '#ff2200';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Floating spores
+      ctx.fillStyle = '#66ff44';
+      ctx.globalAlpha = 0.25;
+      for (let i = 0; i < 25; i++) {
+        const px = (i * 120 + t * 0.012) % CANVAS_W;
+        const py = CANVAS_H - 60 - ((t * 0.02 + i * 45) % (CANVAS_H - 60));
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + Math.sin(t * 0.005 + i) * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   };
 
@@ -1305,11 +1434,15 @@ export function useGameLoop() {
       : ch === 2 ? ['#1a1a3a','#151530','#0a0a1a','#4455aa']
       : ch === 3 ? ['#3a2a1a','#2a1a10','#1a0f05','#aa6622']
       : ch === 5 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
+      : ch === 6 ? ['#2a2028','#1a1520','#0a0a10','#aa4466']
+      : ch === 7 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
       : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
     const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
       : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
       : ch === 3 ? ['#4a3a2a','#aa7733','#886622']
       : ch === 5 ? ['#2a3a2a','#44aa22','#227711']
+      : ch === 6 ? ['#3a2a30','#aa4466','#883355']
+      : ch === 7 ? ['#2a3a2a','#44aa22','#227711']
       : ['#3a2020','#aa3333','#882222'];
 
     // Draw platforms
@@ -1417,7 +1550,38 @@ export function useGameLoop() {
       ctx.restore();
     }
 
-    // Draw enemies
+    // Draw Levi ability pickups
+    for (const ap of s.level.leviAbilityPickups) {
+      if (ap.collected) continue;
+      const apx = ap.x - camX;
+      if (apx + ap.width < -50 || apx > CANVAS_W + 50) continue;
+      const aDef = LEVI_ABILITIES[ap.ability];
+      const t = Date.now() * 0.003;
+      const floatY = ap.y + Math.sin(t * 1.2 + ap.x) * 6;
+      ctx.save();
+      ctx.shadowColor = aDef.glowColor;
+      ctx.shadowBlur = 18 + Math.sin(t * 2) * 6;
+      ctx.fillStyle = aDef.color;
+      ctx.beginPath();
+      ctx.arc(apx + ap.width / 2, floatY + ap.height / 2, ap.width / 2 + 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Fang icon
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.9;
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🦷', apx + ap.width / 2, floatY + ap.height / 2 + 5);
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      // Label
+      ctx.fillStyle = aDef.color;
+      ctx.font = '10px MedievalSharp';
+      ctx.textAlign = 'center';
+      ctx.fillText(aDef.name, apx + ap.width / 2, floatY - 10);
+    }
+
+
     for (const e of s.level.enemies) {
       if (!e.isAlive) continue;
       const ex = e.x - camX;
@@ -1638,24 +1802,30 @@ export function useGameLoop() {
       6: '3-2: Pulsing Veins',
       7: '4-1: Corrupted Approach',
       8: '4-2: The Rotting Heart',
-      9: '5-1: The Rotten Core',
+      9: '5-1: The Descent',
+      10: '5-2: Toxic Tunnels',
+      11: '6-1: The Living Factory',
+      12: '6-2: Approach to the Core',
+      13: '7-1: The Rotten Core',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Weapon HUD (bottom left)
     if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
-      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillRect(10, CANVAS_H - 60, 280, 50);
       ctx.strokeStyle = '#ff6600';
       ctx.lineWidth = 2;
-      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeRect(10, CANVAS_H - 60, 280, 50);
       ctx.fillStyle = '#ff8800';
       ctx.font = 'bold 14px MedievalSharp';
       ctx.textAlign = 'left';
       ctx.fillText('🦷 SUPER LEVI', 20, CANVAS_H - 38);
-      ctx.font = '11px MedievalSharp';
+      ctx.font = '10px MedievalSharp';
       ctx.fillStyle = '#ccaa88';
-      ctx.fillText('J:Devour  ↑+J:Shoot  Jump:Shockwave', 20, CANVAS_H - 18);
+      const controls = ['J:Devour', '↑+J:Shoot', 'Jump:Shockwave'];
+      if (p.leviAbilities.includes('toxic_spit')) controls.push('↓+J:Spit');
+      ctx.fillText(controls.join('  '), 20, CANVAS_H - 18);
     } else {
       ctx.fillStyle = '#000000aa';
       ctx.fillRect(10, CANVAS_H - 60, 220, 50);
