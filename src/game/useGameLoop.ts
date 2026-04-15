@@ -1318,6 +1318,89 @@ export function useGameLoop() {
         ctx.lineTo(cx + (Math.sin(i * 3) * 20), CANVAS_H - 100 - 15 - Math.random() * 10);
         ctx.stroke();
       }
+    } else if (chapter === 6) {
+      // THE LIVING FACTORY — Industrial bio-mechanical horror
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0a0a0f');
+      skyGrad.addColorStop(0.3, '#151520');
+      skyGrad.addColorStop(0.6, '#1a1520');
+      skyGrad.addColorStop(1, '#0a0808');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Conveyor belt lines
+      ctx.strokeStyle = '#333340';
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 15; i++) {
+        const gx = i * 160 - (camX * 0.15) % 320;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx + 30, CANVAS_H - 100);
+        ctx.stroke();
+      }
+      // Orange molten veins
+      ctx.strokeStyle = '#ff440066';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 10; i++) {
+        const vx = i * 250 - (camX * 0.2) % 500;
+        const pulse = Math.sin(t * 0.003 + i * 1.7) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 30, CANVAS_H - 180, vx - 20, CANVAS_H - 280, vx + 15, CANVAS_H - 400);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Sparks & embers
+      ctx.fillStyle = '#ff6600';
+      for (let i = 0; i < 12; i++) {
+        const px = (i * 200 + t * 0.02) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.04 + i * 50) % (CANVAS_H - 80));
+        ctx.globalAlpha = 0.3 + Math.sin(t * 0.008 + i) * 0.2;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (chapter === 7) {
+      // THE ROTTEN CORE CHAMBER — Final boss arena
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#030803');
+      skyGrad.addColorStop(0.3, '#0a1a08');
+      skyGrad.addColorStop(0.5, '#081508');
+      skyGrad.addColorStop(1, '#020502');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Massive pulsing roots
+      ctx.strokeStyle = '#1a3310';
+      ctx.lineWidth = 16;
+      for (let i = 0; i < 10; i++) {
+        const rx = i * 250 - (camX * 0.08) % 500;
+        const sway = Math.sin(t * 0.001 + i * 1.8) * 12;
+        ctx.beginPath();
+        ctx.moveTo(rx, CANVAS_H);
+        ctx.bezierCurveTo(rx + sway + 50, CANVAS_H - 180, rx - sway + 25, CANVAS_H - 350, rx + sway, -50);
+        ctx.stroke();
+      }
+      // Intense toxic glow
+      const toxicPulse = Math.sin(t * 0.004) * 0.5 + 0.5;
+      ctx.globalAlpha = toxicPulse * 0.08;
+      ctx.fillStyle = '#44ff22';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = toxicPulse * 0.04;
+      ctx.fillStyle = '#ff2200';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Floating spores
+      ctx.fillStyle = '#66ff44';
+      ctx.globalAlpha = 0.25;
+      for (let i = 0; i < 25; i++) {
+        const px = (i * 120 + t * 0.012) % CANVAS_W;
+        const py = CANVAS_H - 60 - ((t * 0.02 + i * 45) % (CANVAS_H - 60));
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + Math.sin(t * 0.005 + i) * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   };
 
@@ -1351,11 +1434,15 @@ export function useGameLoop() {
       : ch === 2 ? ['#1a1a3a','#151530','#0a0a1a','#4455aa']
       : ch === 3 ? ['#3a2a1a','#2a1a10','#1a0f05','#aa6622']
       : ch === 5 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
+      : ch === 6 ? ['#2a2028','#1a1520','#0a0a10','#aa4466']
+      : ch === 7 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
       : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
     const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
       : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
       : ch === 3 ? ['#4a3a2a','#aa7733','#886622']
       : ch === 5 ? ['#2a3a2a','#44aa22','#227711']
+      : ch === 6 ? ['#3a2a30','#aa4466','#883355']
+      : ch === 7 ? ['#2a3a2a','#44aa22','#227711']
       : ['#3a2020','#aa3333','#882222'];
 
     // Draw platforms
