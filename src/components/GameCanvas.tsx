@@ -168,6 +168,9 @@ const GameCanvas = () => {
   const handleRestart = useCallback(() => {
     setShowVictoryCutscene(false);
     setShowCutscene(false);
+    setIsLevi(false);
+    leviAudioRef.current?.pause();
+    if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
     handleStart();
   }, [handleStart]);
 
