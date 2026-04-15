@@ -614,7 +614,6 @@ export function useGameLoop() {
                 p.health = Math.min(p.maxHealth, p.health + healAmt);
                 spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#44ff44', 10);
               }
-              }
             }
           }
         }
