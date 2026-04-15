@@ -14,6 +14,16 @@ const makeBoss = (x: number, y: number): Boss => ({
   health: 30, maxHealth: 30,
   isAlive: true, phase: 1,
   attackCooldown: 120, attackType: 'idle', direction: -1,
+  bossType: 'colossus',
+});
+
+const makeRottenCore = (x: number, y: number): Boss => ({
+  x, y, width: 200, height: 200,
+  velocityX: 0, velocityY: 0,
+  health: 50, maxHealth: 50,
+  isAlive: true, phase: 1,
+  attackCooldown: 100, attackType: 'idle', direction: -1,
+  bossType: 'rotten_core',
 });
 
 const makeWeaponPickup = (x: number, y: number, weapon: WeaponPickup['weapon']): WeaponPickup => ({
