@@ -1331,33 +1331,53 @@ export function useGameLoop() {
     if (s.level.boss?.isAlive) {
       const b = s.level.boss;
       const bx = b.x - camX;
-      const img = s.images.boss;
-      if (img?.complete) {
+      const isRC = b.bossType === 'rotten_core';
+      const bossImage = isRC ? s.images.rottenCore : s.images.boss;
+      
+      if (bossImage?.complete) {
         ctx.save();
-        ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
-        ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
+        if (isRC) {
+          // Rotten Core: green toxic glow based on phase
+          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
+          ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
+        } else {
+          ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
+          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
+        }
         if (b.direction > 0) {
           ctx.translate(bx + b.width, b.y);
           ctx.scale(-1, 1);
-          ctx.drawImage(img, 0, 0, b.width, b.height);
+          ctx.drawImage(bossImage, 0, 0, b.width, b.height);
         } else {
-          ctx.drawImage(img, bx, b.y, b.width, b.height);
+          ctx.drawImage(bossImage, bx, b.y, b.width, b.height);
         }
         ctx.shadowBlur = 0;
         ctx.restore();
       }
 
+      // Boss health bar
+      const bossBarColor = isRC
+        ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11')
+        : (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900');
       ctx.fillStyle = '#330000';
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
-      ctx.fillStyle = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900';
+      ctx.fillStyle = bossBarColor;
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300 * (b.health / b.maxHealth), 16);
-      ctx.strokeStyle = '#ffaa00';
+      ctx.strokeStyle = isRC ? '#44ff22' : '#ffaa00';
       ctx.lineWidth = 2;
       ctx.strokeRect(CANVAS_W / 2 - 150, 20, 300, 16);
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px MedievalSharp';
       ctx.textAlign = 'center';
-      ctx.fillText('THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+      ctx.fillText(isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+      
+      // Phase indicator for Rotten Core
+      if (isRC) {
+        const phaseNames = ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
+        ctx.fillStyle = bossBarColor;
+        ctx.font = '10px MedievalSharp';
+        ctx.fillText(`Phase ${b.phase}: ${phaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
+      }
     }
 
     // Draw player
