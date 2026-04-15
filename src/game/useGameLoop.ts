@@ -335,6 +335,38 @@ export function useGameLoop() {
       p.velocityY = JUMP_FORCE;
       p.onGround = false;
       p.isJumping = true;
+      // Levi's jump shockwave
+      if (p.isLevi) {
+        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 15);
+        // Damage nearby enemies with shockwave
+        for (const e of level.enemies) {
+          if (!e.isAlive) continue;
+          const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
+          const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
+          if (Math.sqrt(dx * dx + dy * dy) < 120) {
+            e.health -= 2;
+            e.velocityY = -8;
+            e.velocityX = dx > 0 ? 5 : -5;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff8800', 8);
+            if (e.health <= 0) {
+              e.isAlive = false;
+              s.score += e.type === 'onion' ? 300 : 200;
+              spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 15);
+            }
+          }
+        }
+        // Shockwave hits boss too
+        if (level.boss?.isAlive) {
+          const b = level.boss;
+          const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
+          const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
+          if (Math.sqrt(dx * dx + dy * dy) < 150) {
+            b.health -= 2;
+            spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff8800', 10);
+            if (b.health <= 0) { b.health = 0; startFinisher(); }
+          }
+        }
+      }
     }
 
     // Attack
