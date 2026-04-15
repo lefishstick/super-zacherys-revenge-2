@@ -9,17 +9,21 @@ interface CutsceneScreenProps {
 const SPEAKER_COLORS: Record<string, string> = {
   narrator: 'text-muted-foreground italic',
   zachery: 'text-primary font-bold',
+  levi: 'text-game-fire font-bold',
   robot: 'text-game-toxic',
   voice: 'text-game-fire',
   colossus: 'text-game-boss font-bold',
+  core: 'text-game-toxic font-bold',
 };
 
 const SPEAKER_LABELS: Record<string, string> = {
   narrator: '',
   zachery: 'Zachery',
+  levi: 'Super Levi',
   robot: 'Broken Robot',
   voice: '???',
   colossus: 'The Rotten Colossus',
+  core: 'The Rotten Core',
 };
 
 const CutsceneScreen = ({ cutscenes, onComplete }: CutsceneScreenProps) => {

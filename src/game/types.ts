@@ -69,6 +69,8 @@ export interface Player extends Entity {
   score: number;
   currentWeapon: WeaponType;
   weapons: WeaponType[];
+  isLevi: boolean;
+  devouredEnemies: number;
 }
 
 export interface Enemy extends Entity {
