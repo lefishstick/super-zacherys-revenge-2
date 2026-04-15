@@ -24,7 +24,7 @@ const makeHealthPickup = (x: number, y: number, healAmount = 3): HealthPickup =>
   x, y, width: 24, height: 24, healAmount, collected: false,
 });
 
-export const TOTAL_LEVELS = 8;
+export const TOTAL_LEVELS = 9;
 
 export const createLevel = (levelNum: number): Level => {
   const groundY = 500;
