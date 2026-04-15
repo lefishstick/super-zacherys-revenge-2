@@ -272,9 +272,24 @@ export function useGameLoop() {
           // Finisher complete!
           f.active = false;
           s.score += 2000;
-          s.gameState = 'victory';
-          setGameState('victory');
-          setScore(s.score);
+          
+          if (s.levelNum < TOTAL_LEVELS) {
+            // Colossus defeated — transition to Rotten Core level
+            setScore(s.score);
+            const nextLevel = s.levelNum + 1;
+            const handler = (window as any).__handleLevelTransition;
+            if (handler) {
+              handler(nextLevel);
+            } else {
+              setCurrentLevel(nextLevel);
+              initLevel(nextLevel);
+            }
+          } else {
+            // Final boss defeated — victory!
+            s.gameState = 'victory';
+            setGameState('victory');
+            setScore(s.score);
+          }
         }
       }
       
