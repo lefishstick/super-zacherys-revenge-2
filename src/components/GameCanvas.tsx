@@ -9,24 +9,55 @@ import CutsceneScreen from './CutsceneScreen';
 const GameCanvas = () => {
   const { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H } = useGameLoop();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const leviAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isLevi, setIsLevi] = useState(false);
   const [cutsceneQueue, setCutsceneQueue] = useState<Cutscene[]>([]);
   const [showCutscene, setShowCutscene] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<number | null>(null);
   const [showVictoryCutscene, setShowVictoryCutscene] = useState(false);
 
+  // Listen for Levi switch event
+  useEffect(() => {
+    const handler = () => {
+      setIsLevi(true);
+      // Switch music
+      audioRef.current?.pause();
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      if (!leviAudioRef.current) {
+        leviAudioRef.current = new Audio('/audio/levi-theme.mp3');
+        leviAudioRef.current.loop = true;
+        leviAudioRef.current.volume = 0.4;
+      }
+      leviAudioRef.current.play().catch(() => {});
+    };
+    window.addEventListener('switch_to_levi', handler);
+    return () => window.removeEventListener('switch_to_levi', handler);
+  }, []);
+
   useEffect(() => {
     if (gameState === 'playing' || gameState === 'cutscene') {
-      if (!audioRef.current) {
-        audioRef.current = new Audio('/audio/theme.mp3');
-        audioRef.current.loop = true;
-        audioRef.current.volume = 0.4;
+      if (isLevi) {
+        if (!leviAudioRef.current) {
+          leviAudioRef.current = new Audio('/audio/levi-theme.mp3');
+          leviAudioRef.current.loop = true;
+          leviAudioRef.current.volume = 0.4;
+        }
+        leviAudioRef.current.play().catch(() => {});
+      } else {
+        if (!audioRef.current) {
+          audioRef.current = new Audio('/audio/theme.mp3');
+          audioRef.current.loop = true;
+          audioRef.current.volume = 0.4;
+        }
+        audioRef.current.play().catch(() => {});
       }
-      audioRef.current.play().catch(() => {});
     } else if (gameState === 'title' || gameState === 'gameover') {
       audioRef.current?.pause();
       if (audioRef.current) audioRef.current.currentTime = 0;
+      leviAudioRef.current?.pause();
+      if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
     }
-  }, [gameState]);
+  }, [gameState, isLevi]);
 
   // When game signals a cutscene-before-level
   useEffect(() => {
