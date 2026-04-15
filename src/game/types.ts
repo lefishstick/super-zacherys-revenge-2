@@ -2,6 +2,44 @@ export type GameState = 'title' | 'playing' | 'gameover' | 'victory' | 'cutscene
 
 export type WeaponType = 'forest_blade' | 'vine_whip' | 'static_bolt' | 'iron_fist' | 'corruption_purge';
 
+export type LeviAbility = 'mega_chomp' | 'toxic_spit' | 'belly_slam' | 'frenzy';
+
+export interface LeviAbilityDef {
+  id: LeviAbility;
+  name: string;
+  description: string;
+  color: string;
+  glowColor: string;
+}
+
+export const LEVI_ABILITIES: Record<LeviAbility, LeviAbilityDef> = {
+  mega_chomp: {
+    id: 'mega_chomp', name: 'Mega Chomp', description: 'Massively increased devour range and damage.',
+    color: '#ff4400', glowColor: '#cc2200',
+  },
+  toxic_spit: {
+    id: 'toxic_spit', name: 'Toxic Spit', description: 'Spit toxic acid at enemies from a distance.',
+    color: '#88ff00', glowColor: '#66cc00',
+  },
+  belly_slam: {
+    id: 'belly_slam', name: 'Belly Slam', description: 'Ground-pound that creates a massive shockwave.',
+    color: '#ff8800', glowColor: '#cc6600',
+  },
+  frenzy: {
+    id: 'frenzy', name: 'Feeding Frenzy', description: 'Devour heals fully and attack speed doubles.',
+    color: '#ff0066', glowColor: '#cc0044',
+  },
+};
+
+export interface LeviAbilityPickup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  ability: LeviAbility;
+  collected: boolean;
+}
+
 export interface WeaponDef {
   id: WeaponType;
   name: string;
@@ -71,6 +109,7 @@ export interface Player extends Entity {
   weapons: WeaponType[];
   isLevi: boolean;
   devouredEnemies: number;
+  leviAbilities: LeviAbility[];
 }
 
 export interface Enemy extends Entity {
@@ -135,6 +174,7 @@ export interface Level {
   isBossLevel: boolean;
   weaponPickups: WeaponPickup[];
   healthPickups: HealthPickup[];
+  leviAbilityPickups: LeviAbilityPickup[];
   chapter: number;
 }
 
