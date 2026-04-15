@@ -361,14 +361,17 @@ export function useGameLoop() {
       p.isJumping = true;
       // Levi's jump shockwave
       if (p.isLevi) {
-        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', 15);
+        const hasBellySlam = p.leviAbilities.includes('belly_slam');
+        const shockRadius = hasBellySlam ? 200 : 120;
+        const shockDmg = hasBellySlam ? 5 : 3;
+        spawnParticles(p.x + p.width / 2, p.y + p.height, '#ff6600', hasBellySlam ? 25 : 15);
         // Damage nearby enemies with shockwave
         for (const e of level.enemies) {
           if (!e.isAlive) continue;
           const dx = (e.x + e.width / 2) - (p.x + p.width / 2);
           const dy = (e.y + e.height / 2) - (p.y + p.height / 2);
-          if (Math.sqrt(dx * dx + dy * dy) < 120) {
-            e.health -= 2;
+          if (Math.sqrt(dx * dx + dy * dy) < shockRadius) {
+            e.health -= shockDmg;
             e.velocityY = -8;
             e.velocityX = dx > 0 ? 5 : -5;
             spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ff8800', 8);
