@@ -402,19 +402,33 @@ export function useGameLoop() {
         p.isAttacking = true;
         
         if (p.isLevi) {
-          // LEVI ATTACK: Devour or shoot devoured enemies
-          p.attackTimer = 20;
-          if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
+          // LEVI ATTACK: Devour, shoot devoured, or toxic spit
+          const hasFrenzy = p.leviAbilities.includes('frenzy');
+          p.attackTimer = hasFrenzy ? 12 : 20;
+          if (p.leviAbilities.includes('toxic_spit') && (keys.has('arrowdown') || keys.has('s'))) {
+            // Toxic spit — ranged acid attack
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -20),
+              y: p.y + p.height / 2 - 10,
+              width: 20, height: 20,
+              velocityX: (p.facingRight ? 1 : -1) * 10,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: 4,
+              lifetime: 80,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#88ff00', 10);
+          } else if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
             // Shoot devoured enemy as projectile (hold up + attack)
             p.devouredEnemies--;
             s.projectiles.push({
               x: p.x + (p.facingRight ? p.width : -20),
               y: p.y + p.height / 2 - 10,
               width: 25, height: 25,
-              velocityX: (p.facingRight ? 1 : -1) * 12,
+              velocityX: (p.facingRight ? 1 : -1) * 14,
               velocityY: -2,
               isPlayerProjectile: true,
-              damage: 5,
+              damage: 8,
               lifetime: 100,
             });
             spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 10);
