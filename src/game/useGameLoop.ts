@@ -838,36 +838,58 @@ export function useGameLoop() {
         ? { 2: 'core_phase2', 3: 'core_phase3' }
         : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
-      // Player melee/AOE attack hits boss
-      if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
-        let hit = false;
-        if (isAOE) {
-          const dx = (b.x + b.width / 2) - aoeCenterX;
-          const dy = (b.y + b.height / 2) - aoeCenterY;
-          hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
-        } else {
-          hit = atkX < b.x + b.width && atkX + atkRange > b.x &&
-                atkY < b.y + b.height && atkY + p.height > b.y;
-        }
-        if (hit) {
-          b.health -= weapon.damage;
-          spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
-          if (b.health <= 0) {
-            b.health = 0;
-            startFinisher();
+      // Player attack hits boss
+      const bossHitCheck = () => {
+        if (p.isLevi) {
+          // Levi devour attack on boss
+          if (p.isAttacking && p.attackTimer > 15) {
+            const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
+            const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
+            if (Math.sqrt(dx * dx + dy * dy) < 100) {
+              b.health -= 3;
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 10);
+              return true;
+            }
           }
-          if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
-            b.phase = 3;
-            if (!s.bossPhaseTriggered[3]) {
-              s.bossPhaseTriggered[3] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
-            }
-          } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
-            b.phase = 2;
-            if (!s.bossPhaseTriggered[2]) {
-              s.bossPhaseTriggered[2] = true;
-              window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
-            }
+          return false;
+        } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+          let hit = false;
+          if (isAOE) {
+            const dx = (b.x + b.width / 2) - aoeCenterX;
+            const dy = (b.y + b.height / 2) - aoeCenterY;
+            hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
+          } else {
+            hit = atkX < b.x + b.width && atkX + atkRange > b.x &&
+                  atkY < b.y + b.height && atkY + p.height > b.y;
+          }
+          if (hit) {
+            b.health -= weapon.damage;
+            spawnParticles(atkX + atkRange / 2, atkY + p.height / 2, weapon.color, 10);
+            return true;
+          }
+          return false;
+        }
+        return false;
+      };
+      
+      if (bossHitCheck()) {
+        if (b.health <= 0) {
+          b.health = 0;
+          startFinisher();
+        }
+        if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+          b.phase = 3;
+          if (!s.bossPhaseTriggered[3]) {
+            s.bossPhaseTriggered[3] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[3] }));
+          }
+        } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+          b.phase = 2;
+          if (!s.bossPhaseTriggered[2]) {
+            s.bossPhaseTriggered[2] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseEvents[2] }));
+          }
+        }
           }
         }
       }
