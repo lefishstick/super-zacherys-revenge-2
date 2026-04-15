@@ -1514,8 +1514,25 @@ export function useGameLoop() {
 
     // Attack effect
     if (p.isAttacking) {
-      if (weapon.aoeRadius) {
-        // AOE ring
+      if (p.isLevi) {
+        // Levi devour bite effect
+        const biteX = p.facingRight ? px + p.width : px - 40;
+        ctx.save();
+        ctx.fillStyle = '#ff660088';
+        ctx.beginPath();
+        ctx.arc(biteX + 20, p.y + p.height / 2, 30, 0, Math.PI * 2);
+        ctx.fill();
+        // Chomping jaw lines
+        ctx.strokeStyle = '#ff8800';
+        ctx.lineWidth = 3;
+        const chomp = Math.sin(Date.now() * 0.02) * 10;
+        ctx.beginPath();
+        ctx.moveTo(biteX, p.y + p.height / 2 - 15 + chomp);
+        ctx.lineTo(biteX + 40, p.y + p.height / 2);
+        ctx.lineTo(biteX, p.y + p.height / 2 + 15 - chomp);
+        ctx.stroke();
+        ctx.restore();
+      } else if (weapon.aoeRadius) {
         ctx.strokeStyle = weapon.color;
         ctx.lineWidth = 3;
         ctx.globalAlpha = 0.5;
@@ -1525,11 +1542,9 @@ export function useGameLoop() {
         ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (!weapon.isRanged) {
-        // Melee slash
         const ax = p.facingRight ? px + p.width : px - weapon.range;
         ctx.fillStyle = weapon.color + '66';
         if (weapon.id === 'vine_whip') {
-          // Whip arc
           ctx.strokeStyle = weapon.color;
           ctx.lineWidth = 3;
           ctx.beginPath();
