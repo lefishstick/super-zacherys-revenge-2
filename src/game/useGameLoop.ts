@@ -1624,26 +1624,37 @@ export function useGameLoop() {
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Weapon HUD (bottom left)
-    ctx.fillStyle = '#000000aa';
-    ctx.fillRect(10, CANVAS_H - 60, 220, 50);
-    ctx.strokeStyle = weapon.color;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
-    
-    // Current weapon name
-    ctx.fillStyle = weapon.color;
-    ctx.font = 'bold 14px MedievalSharp';
-    ctx.textAlign = 'left';
-    ctx.fillText(`⚔ ${weapon.name}`, 20, CANVAS_H - 38);
-    
-    // Weapon slots
-    ctx.font = '11px MedievalSharp';
-    ctx.fillStyle = '#aaaaaa';
-    const slotText = p.weapons.map((w, i) => {
-      const isActive = w === p.currentWeapon;
-      return `[${i + 1}]${isActive ? '►' : ' '}${WEAPONS[w].name.substring(0, 8)}`;
-    }).join('  ');
-    ctx.fillText(slotText.length > 35 ? slotText.substring(0, 35) + '…' : slotText, 20, CANVAS_H - 18);
+    if (p.isLevi) {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillStyle = '#ff8800';
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText('🦷 SUPER LEVI', 20, CANVAS_H - 38);
+      ctx.font = '11px MedievalSharp';
+      ctx.fillStyle = '#ccaa88';
+      ctx.fillText('J:Devour  ↑+J:Shoot  Jump:Shockwave', 20, CANVAS_H - 18);
+    } else {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 220, 50);
+      ctx.strokeStyle = weapon.color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 220, 50);
+      ctx.fillStyle = weapon.color;
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText(`⚔ ${weapon.name}`, 20, CANVAS_H - 38);
+      ctx.font = '11px MedievalSharp';
+      ctx.fillStyle = '#aaaaaa';
+      const slotText = p.weapons.map((w, i) => {
+        const isActive = w === p.currentWeapon;
+        return `[${i + 1}]${isActive ? '►' : ' '}${WEAPONS[w].name.substring(0, 8)}`;
+      }).join('  ');
+      ctx.fillText(slotText.length > 35 ? slotText.substring(0, 35) + '…' : slotText, 20, CANVAS_H - 18);
+    }
 
     // Direction indicator
     if (!s.level.isBossLevel) {
