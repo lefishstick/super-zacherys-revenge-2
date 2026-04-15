@@ -200,36 +200,50 @@ export function useGameLoop() {
           s.level.boss.attackCooldown = 999;
         }
       } else if (f.arrowPhase === 'flying') {
-        // Arrow flies from left side across screen toward boss
-        f.arrowX += 28;
-        // Trail particles
-        spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
-        spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
-        
-        if (f.arrowX >= f.arrowTargetX) {
-          f.arrowPhase = 'impact';
-          f.explosionTimer = 0;
-          f.screenShake = 20;
+        const isRC = s.level.boss?.bossType === 'rotten_core';
+        if (isRC) {
+          // LEVI DEVOUR: Player rushes toward boss
+          const p = s.player!;
+          const targetX = f.arrowTargetX - p.width / 2;
+          const dx = targetX - p.x;
+          p.x += Math.sign(dx) * 15;
+          p.facingRight = dx > 0;
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff6600', 3);
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff8800', 2);
+          if (Math.abs(dx) < 30) {
+            f.arrowPhase = 'impact';
+            f.explosionTimer = 0;
+            f.screenShake = 25;
+          }
+        } else {
+          // Arrow flies from left side across screen toward boss
+          f.arrowX += 28;
+          spawnParticles(f.arrowX, f.arrowY, '#ffdd00', 2);
+          spawnParticles(f.arrowX, f.arrowY, '#ffffff', 1);
+          if (f.arrowX >= f.arrowTargetX) {
+            f.arrowPhase = 'impact';
+            f.explosionTimer = 0;
+            f.screenShake = 20;
+          }
         }
       } else if (f.arrowPhase === 'impact') {
+        const isRC = s.level.boss?.bossType === 'rotten_core';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 20 - f.explosionTimer);
         
-        // Arrow continues through
-        f.arrowX += 20;
+        if (!isRC) f.arrowX += 20;
         
         if (f.explosionTimer === 1) {
-          // First impact - big flash particles
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
+          const colors = isRC ? ['#44ff22', '#ff6600', '#ffffff', '#88ff44'] : ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'];
           for (let i = 0; i < 40; i++) {
             s.particles.push({
               x: bx, y: by,
               vx: (Math.random() - 0.5) * 16,
               vy: (Math.random() - 0.5) * 16,
-              life: 40 + Math.random() * 30,
-              maxLife: 70,
-              color: ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'][Math.floor(Math.random() * 4)],
+              life: 40 + Math.random() * 30, maxLife: 70,
+              color: colors[Math.floor(Math.random() * 4)],
               size: 4 + Math.random() * 8,
             });
           }
@@ -240,14 +254,17 @@ export function useGameLoop() {
           f.explosionTimer = 0;
         }
       } else if (f.arrowPhase === 'exploding') {
+        const isRC = s.level.boss?.bossType === 'rotten_core';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 15 - f.explosionTimer * 0.5);
         
-        // Multiple explosion waves
         if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
           const wave = f.explosionTimer / 8;
+          const colors = isRC 
+            ? ['#44ff22', '#88ff44', '#ff6600', '#ffffff', '#22aa11']
+            : ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'];
           for (let i = 0; i < 30; i++) {
             const angle = (Math.PI * 2 / 30) * i;
             const speed = 4 + wave * 2;
@@ -255,26 +272,30 @@ export function useGameLoop() {
               x: bx, y: by,
               vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
               vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 3,
-              life: 50 + Math.random() * 30,
-              maxLife: 80,
-              color: ['#ff2200', '#ffaa00', '#ffdd00', '#ff6600', '#ffffff'][Math.floor(Math.random() * 5)],
+              life: 50 + Math.random() * 30, maxLife: 80,
+              color: colors[Math.floor(Math.random() * 5)],
               size: 3 + Math.random() * 10,
             });
           }
         }
         
-        // Make boss disappear
         if (s.level.boss) {
           s.level.boss.isAlive = false;
         }
         
         if (f.explosionTimer > 90) {
-          // Finisher complete!
           f.active = false;
           s.score += 2000;
           
           if (s.levelNum < TOTAL_LEVELS) {
-            // Colossus defeated — transition to Rotten Core level
+            // Colossus defeated — swap to Levi!
+            if (s.player) {
+              s.player.isLevi = true;
+              s.player.devouredEnemies = 0;
+              s.player.health = s.player.maxHealth; // Full heal on swap
+            }
+            // Dispatch music change event
+            window.dispatchEvent(new CustomEvent('switch_to_levi'));
             setScore(s.score);
             const nextLevel = s.levelNum + 1;
             const handler = (window as any).__handleLevelTransition;
@@ -285,7 +306,7 @@ export function useGameLoop() {
               initLevel(nextLevel);
             }
           } else {
-            // Final boss defeated — victory!
+            // Final boss devoured — victory!
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
