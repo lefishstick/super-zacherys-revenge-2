@@ -1480,20 +1480,36 @@ export function useGameLoop() {
 
     // Draw player
     const px = p.x - camX;
-    const img = s.images.player;
-    if (img?.complete) {
+    const playerImage = p.isLevi ? s.images.levi : s.images.player;
+    if (playerImage?.complete) {
       ctx.save();
       if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.5;
       }
+      // Levi glow effect
+      if (p.isLevi) {
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 12 + Math.sin(Date.now() * 0.005) * 5;
+      }
       if (!p.facingRight) {
         ctx.translate(px + p.width, p.y);
         ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, 0, p.width, p.height);
+        ctx.drawImage(playerImage, 0, 0, p.width, p.height);
       } else {
-        ctx.drawImage(img, px, p.y, p.width, p.height);
+        ctx.drawImage(playerImage, px, p.y, p.width, p.height);
       }
+      ctx.shadowBlur = 0;
       ctx.restore();
+    }
+    
+    // Levi devour counter HUD
+    if (p.isLevi && p.devouredEnemies > 0) {
+      ctx.fillStyle = '#ff660088';
+      ctx.fillRect(10, 42, 100, 18);
+      ctx.fillStyle = '#ff8800';
+      ctx.font = '12px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText(`🍖 Devoured: ${p.devouredEnemies}`, 14, 56);
     }
 
     // Attack effect
