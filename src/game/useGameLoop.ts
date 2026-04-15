@@ -885,13 +885,15 @@ export function useGameLoop() {
       // Player attack hits boss
       const bossHitCheck = () => {
         if (p.isLevi) {
-          // Levi devour attack on boss
-          if (p.isAttacking && p.attackTimer > 15) {
+          // Levi devour attack on boss — massive damage
+          const hasMC = p.leviAbilities.includes('mega_chomp');
+          const hasFr = p.leviAbilities.includes('frenzy');
+          if (p.isAttacking && p.attackTimer > (hasFr ? 8 : 15)) {
             const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
             const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
-            if (Math.sqrt(dx * dx + dy * dy) < 100) {
-              b.health -= 3;
-              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 10);
+            if (Math.sqrt(dx * dx + dy * dy) < (hasMC ? 140 : 100)) {
+              b.health -= hasMC ? 6 : 4;
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ff6600', 12);
               return true;
             }
           }
