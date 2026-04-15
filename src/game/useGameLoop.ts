@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES } from './types';
+import { createLevel, TOTAL_LEVELS } from './levels';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -85,19 +86,23 @@ export function useGameLoop() {
     s.particles = [];
     s.cameraX = 0;
     s.transitioning = false;
+    const isLevi = s.player?.isLevi ?? false;
+    const leviMaxHP = 20;
+    const zachMaxHP = 10;
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
       velocityX: 0, velocityY: 0,
-      health: s.player?.health ?? 10,
-      maxHealth: 10,
+      health: s.player?.health ?? (isLevi ? leviMaxHP : zachMaxHP),
+      maxHealth: isLevi ? leviMaxHP : zachMaxHP,
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
-      isLevi: s.player?.isLevi ?? false,
+      isLevi,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
+      leviAbilities: s.player?.leviAbilities ?? [],
     };
   }, []);
 
