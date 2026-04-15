@@ -6,6 +6,7 @@ import onionImg from '@/assets/OnionEnemy.png';
 import eggImg from '@/assets/eggEnemy.png';
 import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
+import rottenCoreImg from '/images/rotten-core.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -51,7 +52,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
