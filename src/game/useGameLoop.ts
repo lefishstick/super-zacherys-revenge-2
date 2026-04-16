@@ -653,6 +653,39 @@ export function useGameLoop() {
       }
     }
 
+    // CJ ability pickup collision
+    for (const cap of level.cjAbilityPickups) {
+      if (cap.collected) continue;
+      if (
+        p.x < cap.x + cap.width && p.x + p.width > cap.x &&
+        p.y < cap.y + cap.height && p.y + p.height > cap.y
+      ) {
+        cap.collected = true;
+        if (!p.cjAbilities.includes(cap.ability)) {
+          p.cjAbilities.push(cap.ability);
+        }
+        const aDef = CJ_ABILITIES[cap.ability];
+        spawnParticles(cap.x + cap.width / 2, cap.y + cap.height / 2, aDef.color, 30);
+        window.dispatchEvent(new CustomEvent('cj_ability_pickup', { detail: cap.ability }));
+      }
+    }
+
+    // Ammo pickup collision
+    for (const amp of level.ammoPickups) {
+      if (amp.collected) continue;
+      if (
+        p.x < amp.x + amp.width && p.x + p.width > amp.x &&
+        p.y < amp.y + amp.height && p.y + p.height > amp.y
+      ) {
+        amp.collected = true;
+        p.ammo = Math.min(p.maxAmmo, p.ammo + amp.ammoAmount);
+        spawnParticles(amp.x + amp.width / 2, amp.y + amp.height / 2, '#ffdd44', 15);
+      }
+    }
+
+    // Grenade cooldown
+    if (p.grenadeCooldown > 0) p.grenadeCooldown--;
+
 
     const atkRange = weapon.range;
     const atkX = p.facingRight ? p.x + p.width : p.x - atkRange;
