@@ -2032,17 +2032,233 @@ export function useGameLoop() {
         ctx.lineTo(px + plat.width, plat.y);
         ctx.stroke();
       } else {
-        ctx.fillStyle = platColors[0];
-        ctx.fillRect(px, plat.y, plat.width, plat.height);
-        ctx.fillStyle = platColors[1];
-        ctx.fillRect(px, plat.y, plat.width, 4);
-        ctx.strokeStyle = platColors[2];
-        ctx.lineWidth = 1;
-        for (let v = px + 10; v < px + plat.width; v += 30) {
-          ctx.beginPath();
-          ctx.moveTo(v, plat.y + plat.height);
-          ctx.lineTo(v + 5, plat.y + plat.height + 15);
-          ctx.stroke();
+        // Rich themed floating platform
+        const pw = plat.width;
+        const ph = plat.height;
+        const py = plat.y;
+        const pt = Date.now() * 0.001;
+
+        if (ch === 1 || ch === 7) {
+          // ── Forest: wooden log with mossy top and hanging vines ──
+          const woodGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          woodGrad.addColorStop(0, '#6b3a2a');
+          woodGrad.addColorStop(0.35, '#8b4a2a');
+          woodGrad.addColorStop(1, '#3a1a0a');
+          ctx.fillStyle = woodGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, [4, 4, 2, 2]); ctx.fill();
+          // wood grain lines
+          ctx.strokeStyle = '#4a2a15'; ctx.lineWidth = 1;
+          for (let gx = px + 15; gx < px + pw - 5; gx += 20) {
+            ctx.beginPath(); ctx.moveTo(gx, py + 3); ctx.lineTo(gx - 2, py + ph); ctx.stroke();
+          }
+          // mossy top
+          const mossGrad = ctx.createLinearGradient(0, py, 0, py + 6);
+          mossGrad.addColorStop(0, '#3a8a22'); mossGrad.addColorStop(1, '#226611');
+          ctx.fillStyle = mossGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, 6, [4, 4, 0, 0]); ctx.fill();
+          ctx.fillStyle = '#44aa33';
+          for (let bx = px + 8; bx < px + pw - 8; bx += 14) {
+            ctx.beginPath(); ctx.arc(bx, py + 1, 4, Math.PI, 0); ctx.fill();
+          }
+          // hanging vines
+          ctx.lineWidth = 1.5;
+          for (let vx = px + 12; vx < px + pw - 6; vx += 22) {
+            const vLen = 12 + Math.sin(pt + vx * 0.1) * 4;
+            ctx.strokeStyle = '#226611';
+            ctx.beginPath();
+            ctx.moveTo(vx, py + ph);
+            ctx.bezierCurveTo(vx - 3, py + ph + vLen * 0.5, vx + 3, py + ph + vLen * 0.7, vx, py + ph + vLen);
+            ctx.stroke();
+            ctx.fillStyle = '#33aa22';
+            ctx.beginPath(); ctx.ellipse(vx, py + ph + vLen, 3, 5, 0.2, 0, Math.PI * 2); ctx.fill();
+          }
+
+        } else if (ch === 2) {
+          // ── Night/Space: glowing crystal shard platform ──
+          const crystalGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          crystalGrad.addColorStop(0, '#2a3a88'); crystalGrad.addColorStop(0.5, '#151a55'); crystalGrad.addColorStop(1, '#070a22');
+          ctx.fillStyle = crystalGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 3); ctx.fill();
+          // glowing top edge
+          ctx.shadowColor = '#4466ff'; ctx.shadowBlur = 10 + Math.sin(pt * 2) * 4;
+          ctx.strokeStyle = '#6688ff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(px + 2, py + 1); ctx.lineTo(px + pw - 2, py + 1); ctx.stroke();
+          ctx.shadowBlur = 0;
+          // crystal shards on top
+          ctx.fillStyle = '#aabbff';
+          for (let cx2 = px + 10; cx2 < px + pw - 10; cx2 += 18) {
+            const sh = 6 + Math.sin(cx2 * 0.3) * 3;
+            ctx.beginPath(); ctx.moveTo(cx2, py - sh); ctx.lineTo(cx2 - 4, py); ctx.lineTo(cx2 + 4, py); ctx.closePath(); ctx.fill();
+          }
+          // glowing drips below
+          for (let dx = px + 12; dx < px + pw - 8; dx += 24) {
+            ctx.fillStyle = 'rgba(68,102,255,0.18)';
+            ctx.beginPath(); ctx.moveTo(dx - 4, py + ph); ctx.lineTo(dx + 4, py + ph); ctx.lineTo(dx, py + ph + 12); ctx.closePath(); ctx.fill();
+          }
+
+        } else if (ch === 3) {
+          // ── Desert: cracked sandstone slab ──
+          const sandGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          sandGrad.addColorStop(0, '#c89a50'); sandGrad.addColorStop(0.4, '#a07830'); sandGrad.addColorStop(1, '#604818');
+          ctx.fillStyle = sandGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, [3, 3, 1, 1]); ctx.fill();
+          // cracks
+          ctx.strokeStyle = '#604818'; ctx.lineWidth = 1;
+          for (const seed of [0.2, 0.5, 0.75]) {
+            const cx2 = px + pw * seed;
+            ctx.beginPath(); ctx.moveTo(cx2, py + 2); ctx.lineTo(cx2 + 3, py + ph * 0.45); ctx.lineTo(cx2 - 2, py + ph * 0.75); ctx.stroke();
+          }
+          // sandy top strip
+          ctx.fillStyle = '#e8b860'; ctx.fillRect(px, py, pw, 5);
+          // floating dust
+          ctx.fillStyle = 'rgba(232,184,96,0.35)';
+          for (let dx = px + 5; dx < px + pw - 5; dx += 16) {
+            const yOff = Math.sin(pt * 1.5 + dx * 0.05) * 3;
+            ctx.beginPath(); ctx.arc(dx, py + ph + 6 + yOff, 2, 0, Math.PI * 2); ctx.fill();
+          }
+
+        } else if (ch === 5) {
+          // ── Jungle: mossy glowing stone with mushrooms and vines ──
+          const stoneGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          stoneGrad.addColorStop(0, '#2a5a2a'); stoneGrad.addColorStop(0.5, '#1a3a1a'); stoneGrad.addColorStop(1, '#0a1a0a');
+          ctx.fillStyle = stoneGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 2); ctx.fill();
+          // glowing moss top
+          ctx.shadowColor = '#44ff22'; ctx.shadowBlur = 6 + Math.sin(pt * 3) * 2;
+          ctx.fillStyle = '#44cc22'; ctx.fillRect(px, py, pw, 5); ctx.shadowBlur = 0;
+          ctx.fillStyle = '#33aa22';
+          for (let mx = px + 5; mx < px + pw - 5; mx += 18) {
+            ctx.beginPath(); ctx.arc(mx + 4, py + 3, 5, Math.PI, 0); ctx.fill();
+          }
+          // glowing mushrooms
+          for (let mx = px + 18; mx < px + pw - 10; mx += 38) {
+            ctx.shadowColor = '#ffaa22'; ctx.shadowBlur = 6;
+            ctx.fillStyle = '#ffaa22';
+            ctx.beginPath(); ctx.arc(mx, py - 5, 5, Math.PI, 0); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.fillStyle = '#cc8811'; ctx.fillRect(mx - 1, py - 5, 2, 5);
+          }
+          // hanging vines
+          ctx.strokeStyle = '#226622'; ctx.lineWidth = 1.5;
+          for (let vx = px + 10; vx < px + pw - 8; vx += 20) {
+            const vl = 14 + Math.sin(pt * 0.8 + vx) * 5;
+            ctx.beginPath(); ctx.moveTo(vx, py + ph); ctx.quadraticCurveTo(vx + 4, py + ph + vl * 0.5, vx, py + ph + vl); ctx.stroke();
+          }
+
+        } else if (ch === 6) {
+          // ── Dark Dungeon: stone with purple rune glow ──
+          const darkGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          darkGrad.addColorStop(0, '#3a2a40'); darkGrad.addColorStop(1, '#150a20');
+          ctx.fillStyle = darkGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 2); ctx.fill();
+          // block seams
+          ctx.strokeStyle = '#1a0a25'; ctx.lineWidth = 1;
+          for (const frac of [0.33, 0.66]) {
+            ctx.beginPath(); ctx.moveTo(px + pw * frac, py); ctx.lineTo(px + pw * frac, py + ph); ctx.stroke();
+          }
+          // glowing purple top
+          ctx.shadowColor = '#aa44ff'; ctx.shadowBlur = 8 + Math.sin(pt * 2) * 4;
+          ctx.strokeStyle = '#cc66ff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(px, py + 1); ctx.lineTo(px + pw, py + 1); ctx.stroke(); ctx.shadowBlur = 0;
+          // rune symbols
+          ctx.fillStyle = `rgba(170,68,255,${0.5 + Math.sin(pt * 3) * 0.3})`;
+          ctx.font = '10px serif'; ctx.textAlign = 'center';
+          for (let rx = px + 28; rx < px + pw - 15; rx += 44) {
+            ctx.fillText('ᚱ', rx, py + ph * 0.7 + 4);
+          }
+          ctx.textAlign = 'left';
+          // corner spikes
+          ctx.fillStyle = '#4a2a55';
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 3, py - 8); ctx.lineTo(px + 6, py); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(px + pw, py); ctx.lineTo(px + pw + 3, py - 8); ctx.lineTo(px + pw - 6, py); ctx.fill();
+
+        } else if (ch === 8) {
+          // ── Military / Swamp: camouflage concrete with rivets ──
+          const concGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          concGrad.addColorStop(0, '#5a6a3a'); concGrad.addColorStop(1, '#2a3a1a');
+          ctx.fillStyle = concGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 1); ctx.fill();
+          // top bar
+          ctx.fillStyle = '#8a9a5a'; ctx.fillRect(px, py, pw, 4);
+          // rivet bolts
+          for (const bx of [8, pw / 2, pw - 8]) {
+            if (bx < 0 || bx > pw) continue;
+            ctx.fillStyle = '#aabb77'; ctx.beginPath(); ctx.arc(px + bx, py + 2, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#667733'; ctx.beginPath(); ctx.arc(px + bx, py + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+          // camo blobs
+          ctx.fillStyle = 'rgba(42,58,20,0.55)';
+          ctx.beginPath(); ctx.ellipse(px + pw * 0.28, py + ph * 0.65, 11, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px + pw * 0.7, py + ph * 0.5, 9, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+
+        } else if (ch === 9) {
+          // ── Stone City: steel grate with warning stripes ──
+          const steelGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          steelGrad.addColorStop(0, '#5a5a5a'); steelGrad.addColorStop(0.4, '#3a3a3a'); steelGrad.addColorStop(1, '#1a1a1a');
+          ctx.fillStyle = steelGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 2); ctx.fill();
+          // yellow/black warning stripe top
+          const sW = 12; let striping = true;
+          for (let sx = px; sx < px + pw; sx += sW) {
+            ctx.fillStyle = striping ? '#ffcc00' : '#222222';
+            ctx.fillRect(sx, py, Math.min(sW, px + pw - sx), 5); striping = !striping;
+          }
+          // rivets
+          for (let rx = px + 10; rx < px + pw - 5; rx += 26) {
+            ctx.fillStyle = '#888888'; ctx.beginPath(); ctx.arc(rx, py + 12, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#bbbbbb'; ctx.beginPath(); ctx.arc(rx - 1, py + 11, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+          // grate lines
+          ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+          for (let gx = px + 8; gx < px + pw; gx += 8) {
+            ctx.beginPath(); ctx.moveTo(gx, py + 6); ctx.lineTo(gx, py + ph); ctx.stroke();
+          }
+
+        } else if (ch === 10) {
+          // ── Lava / Hell: obsidian with glowing lava cracks ──
+          const obsGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          obsGrad.addColorStop(0, '#2a1010'); obsGrad.addColorStop(0.5, '#1a0808'); obsGrad.addColorStop(1, '#0a0404');
+          ctx.fillStyle = obsGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 2); ctx.fill();
+          // lava cracks
+          ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 6 + Math.sin(pt * 4) * 3;
+          ctx.strokeStyle = `rgba(255,${Math.floor(68 + Math.sin(pt * 3) * 40)},0,0.9)`; ctx.lineWidth = 1.5;
+          for (const [s1, s2] of [[0.15, 0.6], [0.45, 0.82], [0.72, 0.5]]) {
+            ctx.beginPath(); ctx.moveTo(px + pw * s1, py + 1); ctx.lineTo(px + pw * (s1 + s2) / 2, py + ph * 0.5); ctx.lineTo(px + pw * s2, py + ph - 1); ctx.stroke();
+          }
+          ctx.shadowBlur = 0;
+          // glowing hot top
+          ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10 + Math.sin(pt * 2) * 5;
+          ctx.fillStyle = '#ff3300'; ctx.fillRect(px, py, pw, 3); ctx.shadowBlur = 0;
+          // dripping lava
+          const dripPhase = (pt * 0.5) % 1;
+          for (let dx = px + 16; dx < px + pw - 10; dx += 28) {
+            const dripY = py + ph + dripPhase * 14;
+            const alpha = 1 - dripPhase;
+            ctx.fillStyle = `rgba(255,80,0,${alpha})`;
+            ctx.beginPath(); ctx.arc(dx, dripY, 3 * alpha, 0, Math.PI * 2); ctx.fill();
+          }
+
+        } else {
+          // ── CJ Chapter / Default: military with warning-stripe edges ──
+          const cjGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+          cjGrad.addColorStop(0, '#2a3a20'); cjGrad.addColorStop(1, '#111a08');
+          ctx.fillStyle = cjGrad;
+          ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 2); ctx.fill();
+          // left warning stripe band
+          ctx.save(); ctx.beginPath(); ctx.rect(px, py, 18, ph); ctx.clip();
+          ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 4;
+          for (let d = -ph; d < 18; d += 10) { ctx.beginPath(); ctx.moveTo(px + d, py); ctx.lineTo(px + d + ph, py + ph); ctx.stroke(); }
+          ctx.restore();
+          // right warning stripe band
+          ctx.save(); ctx.beginPath(); ctx.rect(px + pw - 18, py, 18, ph); ctx.clip();
+          ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 4;
+          for (let d = -ph; d < 18; d += 10) { ctx.beginPath(); ctx.moveTo(px + pw - 18 + d, py); ctx.lineTo(px + pw - 18 + d + ph, py + ph); ctx.stroke(); }
+          ctx.restore();
+          // top bar
+          ctx.fillStyle = '#4a6a28'; ctx.fillRect(px + 18, py, pw - 36, 4);
+          // center rivet
+          ctx.fillStyle = '#88aa44'; ctx.beginPath(); ctx.arc(px + pw / 2, py + ph / 2, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#aaccaa'; ctx.beginPath(); ctx.arc(px + pw / 2 - 1, py + ph / 2 - 1, 1.5, 0, Math.PI * 2); ctx.fill();
         }
       }
     }
