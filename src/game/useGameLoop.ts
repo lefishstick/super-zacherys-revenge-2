@@ -436,7 +436,79 @@ export function useGameLoop() {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
         
-        if (p.isLevi) {
+        if (p.isCJ) {
+          // CJ ATTACK: Glock shoot, grenade, flashbang, airstrike
+          p.attackTimer = 12; // Fast fire rate
+          if (p.cjAbilities.includes('frag_grenade') && p.grenadeCount > 0 && (keys.has('arrowdown') || keys.has('s'))) {
+            // Throw grenade
+            p.grenadeCount--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -15),
+              y: p.y + p.height / 2 - 10,
+              width: 12, height: 12,
+              velocityX: (p.facingRight ? 1 : -1) * 8,
+              velocityY: -6,
+              isPlayerProjectile: true,
+              damage: 6,
+              lifetime: 45,
+              isGrenade: true,
+              grenadeTimer: 45,
+              aoeRadius: 120,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 8);
+          } else if (p.cjAbilities.includes('flashbang') && (keys.has('arrowup') || keys.has('w'))) {
+            // Flashbang — stun all enemies on screen
+            p.attackTimer = 60; // Long cooldown
+            spawnParticles(p.x + p.width / 2, p.y, '#ffffaa', 30);
+            for (const e of level.enemies) {
+              if (!e.isAlive) continue;
+              const ex = e.x - s.cameraX;
+              if (ex > -100 && ex < 1060) {
+                e.attackCooldown = 180; // 3 seconds stun
+                e.velocityX = 0;
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 10);
+              }
+            }
+          } else if (p.cjAbilities.includes('airstrike') && keys.has('arrowdown') && (keys.has('arrowup') || keys.has('w'))) {
+            // Airstrike
+            p.attackTimer = 90;
+            for (let i = 0; i < 8; i++) {
+              const strikeX = p.x + (Math.random() - 0.5) * 400;
+              setTimeout(() => {
+                if (!s.level) return;
+                s.projectiles.push({
+                  x: strikeX, y: -20,
+                  width: 15, height: 15,
+                  velocityX: 0, velocityY: 12,
+                  isPlayerProjectile: true,
+                  damage: 5, lifetime: 60,
+                });
+                spawnParticles(strikeX, 50, '#ff4444', 8);
+              }, i * 100);
+            }
+            spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 15);
+          } else if (p.ammo > 0) {
+            // Glock shot
+            p.ammo--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -10),
+              y: p.y + p.height / 2 - 5,
+              width: 8, height: 4,
+              velocityX: (p.facingRight ? 1 : -1) * 16,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: 3,
+              lifetime: 60,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ffdd44', 5);
+            // Muzzle flash
+            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#ffffff', 3);
+          } else {
+            // Pistol whip — melee when out of ammo
+            p.attackTimer = 20;
+            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#888888', 5);
+          }
+        } else if (p.isLevi) {
           // LEVI ATTACK: Devour, shoot devoured, or toxic spit
           const hasFrenzy = p.leviAbilities.includes('frenzy');
           p.attackTimer = hasFrenzy ? 12 : 20;
