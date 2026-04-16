@@ -302,16 +302,18 @@ export function useGameLoop() {
           f.active = false;
           s.score += 2000;
           
-          if (s.levelNum < TOTAL_LEVELS) {
+          const bType = s.level?.boss?.bossType;
+          
+          if (bType === 'colossus') {
             // Colossus defeated — swap to Levi!
             if (s.player) {
               s.player.isLevi = true;
+              s.player.isCJ = false;
               s.player.devouredEnemies = 0;
               s.player.maxHealth = 20;
-              s.player.health = 20; // Full heal on swap
+              s.player.health = 20;
               s.player.leviAbilities = [];
             }
-            // Dispatch music change event
             window.dispatchEvent(new CustomEvent('switch_to_levi'));
             setScore(s.score);
             const nextLevel = s.levelNum + 1;
@@ -322,8 +324,30 @@ export function useGameLoop() {
               setCurrentLevel(nextLevel);
               initLevel(nextLevel);
             }
+          } else if (bType === 'rotten_core') {
+            // Rotten Core devoured — swap to CJ!
+            if (s.player) {
+              s.player.isLevi = false;
+              s.player.isCJ = true;
+              s.player.maxHealth = 15;
+              s.player.health = 15;
+              s.player.cjAbilities = [];
+              s.player.ammo = 30;
+              s.player.maxAmmo = 30;
+              s.player.grenadeCount = 3;
+            }
+            window.dispatchEvent(new CustomEvent('switch_to_cj'));
+            setScore(s.score);
+            const nextLevel = s.levelNum + 1;
+            const handler = (window as any).__handleLevelTransition;
+            if (handler) {
+              handler(nextLevel);
+            } else {
+              setCurrentLevel(nextLevel);
+              initLevel(nextLevel);
+            }
           } else {
-            // Final boss devoured — victory!
+            // Final boss (Rotten Tank) — victory!
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
