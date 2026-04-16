@@ -2349,7 +2349,23 @@ export function useGameLoop() {
         }
       } else if (f.arrowPhase === 'flying') {
         const isRC = s.level?.boss?.bossType === 'rotten_core';
-        if (isRC) {
+        const isTank = s.level?.boss?.bossType === 'rotten_tank';
+        if (isTank) {
+          // CJ unloads everything — show barrage text
+          ctx.fillStyle = '#4488ff';
+          ctx.globalAlpha = 0.9;
+          ctx.font = 'bold 28px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText("FULL ASSAULT!", CANVAS_W / 2, CANVAS_H / 2 - 80);
+          ctx.globalAlpha = 1;
+          // Bullet rain effect
+          for (let i = 0; i < 8; i++) {
+            const bx = f.arrowX - camX + (Math.random() - 0.5) * 100;
+            const by = f.arrowY + (Math.random() - 0.5) * 60;
+            ctx.fillStyle = '#ffdd44';
+            ctx.fillRect(bx, by, 3, 8);
+          }
+        } else if (isRC) {
           // Levi devour rush — player is already rendered, show "DEVOUR!" text
           ctx.fillStyle = '#ff6600';
           ctx.globalAlpha = 0.9;
