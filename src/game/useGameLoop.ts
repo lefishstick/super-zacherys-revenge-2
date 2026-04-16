@@ -1981,7 +1981,8 @@ export function useGameLoop() {
       const b = s.level.boss;
       const bx = b.x - camX;
       const isRC = b.bossType === 'rotten_core';
-      const bossImage = isRC ? s.images.rottenCore : s.images.boss;
+      const isRT = b.bossType === 'rotten_tank';
+      const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : s.images.boss;
       
       if (bossImage?.complete) {
         ctx.save();
