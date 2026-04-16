@@ -1,4 +1,4 @@
-import { Level, Enemy, Boss, WeaponPickup, HealthPickup, LeviAbilityPickup } from './types';
+import { Level, Enemy, Boss, WeaponPickup, HealthPickup, LeviAbilityPickup, CJAbilityPickup, AmmoPickup } from './types';
 
 const makeEnemy = (x: number, y: number, type: 'onion' | 'egg', healthMult = 1): Enemy => ({
   x, y, width: 60, height: 70,
@@ -26,6 +26,15 @@ const makeRottenCore = (x: number, y: number): Boss => ({
   bossType: 'rotten_core',
 });
 
+const makeRottenTank = (x: number, y: number): Boss => ({
+  x, y, width: 180, height: 140,
+  velocityX: 0, velocityY: 0,
+  health: 50, maxHealth: 50,
+  isAlive: true, phase: 1,
+  attackCooldown: 80, attackType: 'idle', direction: -1,
+  bossType: 'rotten_tank',
+});
+
 const makeWeaponPickup = (x: number, y: number, weapon: WeaponPickup['weapon']): WeaponPickup => ({
   x, y, width: 30, height: 30, weapon, collected: false,
 });
@@ -38,11 +47,27 @@ const makeLeviPickup = (x: number, y: number, ability: LeviAbilityPickup['abilit
   x, y, width: 32, height: 32, ability, collected: false,
 });
 
-export const TOTAL_LEVELS = 13;
+const makeCJPickup = (x: number, y: number, ability: CJAbilityPickup['ability']): CJAbilityPickup => ({
+  x, y, width: 32, height: 32, ability, collected: false,
+});
 
-const L = (data: Omit<Level, 'leviAbilityPickups'> & { leviAbilityPickups?: LeviAbilityPickup[] }): Level => ({
+const makeAmmoPickup = (x: number, y: number, ammoAmount = 10): AmmoPickup => ({
+  x, y, width: 20, height: 20, ammoAmount, collected: false,
+});
+
+export const TOTAL_LEVELS = 18;
+
+type LevelInput = Omit<Level, 'leviAbilityPickups' | 'cjAbilityPickups' | 'ammoPickups'> & {
+  leviAbilityPickups?: LeviAbilityPickup[];
+  cjAbilityPickups?: CJAbilityPickup[];
+  ammoPickups?: AmmoPickup[];
+};
+
+const L = (data: LevelInput): Level => ({
   ...data,
   leviAbilityPickups: data.leviAbilityPickups ?? [],
+  cjAbilityPickups: data.cjAbilityPickups ?? [],
+  ammoPickups: data.ammoPickups ?? [],
 });
 
 export const createLevel = (levelNum: number): Level => {
@@ -241,7 +266,6 @@ export const createLevel = (levelNum: number): Level => {
     // ═══════════ LEVI'S CAMPAIGN (Levels 9-13) ═══════════
 
     case 9:
-      // Chapter 5: The Descent — Levi enters the deeper corruption
       return L({
         width: 3000, groundY, isBossLevel: false, chapter: 5,
         platforms: [
@@ -265,7 +289,6 @@ export const createLevel = (levelNum: number): Level => {
       });
 
     case 10:
-      // Chapter 5 continued: Toxic Tunnels
       return L({
         width: 3500, groundY, isBossLevel: false, chapter: 5,
         platforms: [
@@ -290,7 +313,6 @@ export const createLevel = (levelNum: number): Level => {
       });
 
     case 11:
-      // Chapter 6: The Living Factory
       return L({
         width: 3800, groundY, isBossLevel: false, chapter: 6,
         platforms: [
@@ -316,7 +338,6 @@ export const createLevel = (levelNum: number): Level => {
       });
 
     case 12:
-      // Chapter 6: Approach to the Core
       return L({
         width: 4000, groundY, isBossLevel: false, chapter: 6,
         platforms: [
@@ -344,7 +365,6 @@ export const createLevel = (levelNum: number): Level => {
       });
 
     case 13:
-    default:
       // Chapter 7: The Rotten Core — Final Boss
       return L({
         width: 1400, groundY, isBossLevel: true, chapter: 7,
@@ -359,6 +379,135 @@ export const createLevel = (levelNum: number): Level => {
         boss: makeRottenCore(600, groundY - 200),
         weaponPickups: [],
         healthPickups: [makeHealthPickup(150, groundY - 30, 5), makeHealthPickup(500, groundY - 30, 5), makeHealthPickup(900, groundY - 30, 5)],
+      });
+
+    // ═══════════ CJ'S CAMPAIGN (Levels 14-18) ═══════════
+
+    case 14:
+      // Chapter 8: Boot Camp — CJ's training grounds
+      return L({
+        width: 3000, groundY, isBossLevel: false, chapter: 8,
+        platforms: [
+          { x: 0, y: groundY, width: 3000, height: 100 },
+          { x: 300, y: 400, width: 200, height: 20 }, { x: 600, y: 350, width: 180, height: 20 },
+          { x: 950, y: 380, width: 150, height: 20 }, { x: 1200, y: 320, width: 200, height: 20 },
+          { x: 1500, y: 370, width: 160, height: 20 }, { x: 1800, y: 300, width: 180, height: 20 },
+          { x: 2100, y: 360, width: 140, height: 20 }, { x: 2400, y: 280, width: 200, height: 20 },
+          { x: 2700, y: 350, width: 160, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(450, groundY - 70, 'egg', 3), makeEnemy(750, groundY - 70, 'onion', 3),
+          makeEnemy(1050, groundY - 70, 'egg', 3.5), makeEnemy(1350, groundY - 70, 'onion', 3),
+          makeEnemy(1650, groundY - 70, 'egg', 3.5), makeEnemy(1950, groundY - 70, 'onion', 3.5),
+          makeEnemy(2250, groundY - 70, 'egg', 3), makeEnemy(2550, groundY - 70, 'onion', 4),
+          makeEnemy(2850, groundY - 70, 'egg', 4),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(600, groundY - 30, 4), makeHealthPickup(1300, groundY - 30, 4), makeHealthPickup(2000, groundY - 30, 4)],
+        ammoPickups: [makeAmmoPickup(800, groundY - 30), makeAmmoPickup(1600, groundY - 30), makeAmmoPickup(2400, groundY - 30)],
+        cjAbilityPickups: [makeCJPickup(1200, 290, 'frag_grenade')],
+      });
+
+    case 15:
+      // Chapter 8: Supply Line — ambush on a supply convoy
+      return L({
+        width: 3500, groundY, isBossLevel: false, chapter: 8,
+        platforms: [
+          { x: 0, y: groundY, width: 3500, height: 100 },
+          { x: 250, y: 390, width: 220, height: 20 }, { x: 550, y: 330, width: 180, height: 20 },
+          { x: 850, y: 380, width: 160, height: 20 }, { x: 1150, y: 300, width: 200, height: 20 },
+          { x: 1450, y: 360, width: 180, height: 20 }, { x: 1750, y: 280, width: 160, height: 20 },
+          { x: 2050, y: 370, width: 200, height: 20 }, { x: 2350, y: 310, width: 180, height: 20 },
+          { x: 2650, y: 380, width: 140, height: 20 }, { x: 2950, y: 300, width: 200, height: 20 },
+          { x: 3250, y: 350, width: 160, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(350, groundY - 70, 'onion', 3.5), makeEnemy(650, groundY - 70, 'egg', 3.5),
+          makeEnemy(950, groundY - 70, 'onion', 4), makeEnemy(1250, groundY - 70, 'egg', 3.5),
+          makeEnemy(1550, groundY - 70, 'onion', 4), makeEnemy(1850, groundY - 70, 'egg', 4),
+          makeEnemy(2150, groundY - 70, 'onion', 4), makeEnemy(2450, groundY - 70, 'egg', 4.5),
+          makeEnemy(2750, groundY - 70, 'onion', 4), makeEnemy(3050, groundY - 70, 'egg', 4.5),
+          makeEnemy(3350, groundY - 70, 'onion', 4.5),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(500, groundY - 30, 4), makeHealthPickup(1200, groundY - 30, 4), makeHealthPickup(1900, groundY - 30, 4), makeHealthPickup(2600, groundY - 30, 4)],
+        ammoPickups: [makeAmmoPickup(700, groundY - 30), makeAmmoPickup(1400, groundY - 30), makeAmmoPickup(2100, groundY - 30), makeAmmoPickup(2800, groundY - 30)],
+        cjAbilityPickups: [makeCJPickup(1750, 250, 'flashbang')],
+      });
+
+    case 16:
+      // Chapter 9: Forward Operating Base
+      return L({
+        width: 3800, groundY, isBossLevel: false, chapter: 9,
+        platforms: [
+          { x: 0, y: groundY, width: 3800, height: 100 },
+          { x: 200, y: 400, width: 180, height: 20 }, { x: 500, y: 340, width: 150, height: 20 },
+          { x: 780, y: 280, width: 200, height: 20 }, { x: 1100, y: 370, width: 180, height: 20 },
+          { x: 1400, y: 300, width: 160, height: 20 }, { x: 1700, y: 250, width: 200, height: 20 },
+          { x: 2000, y: 380, width: 160, height: 20 }, { x: 2300, y: 300, width: 180, height: 20 },
+          { x: 2600, y: 360, width: 200, height: 20 }, { x: 2900, y: 270, width: 180, height: 20 },
+          { x: 3200, y: 340, width: 160, height: 20 }, { x: 3500, y: 390, width: 180, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(350, groundY - 70, 'egg', 4), makeEnemy(650, groundY - 70, 'onion', 4),
+          makeEnemy(900, groundY - 70, 'egg', 4.5), makeEnemy(1200, groundY - 70, 'onion', 4),
+          makeEnemy(1500, groundY - 70, 'egg', 4.5), makeEnemy(1800, groundY - 70, 'onion', 5),
+          makeEnemy(2100, groundY - 70, 'egg', 4.5), makeEnemy(2400, groundY - 70, 'onion', 5),
+          makeEnemy(2700, groundY - 70, 'egg', 5), makeEnemy(3000, groundY - 70, 'onion', 4.5),
+          makeEnemy(3300, groundY - 70, 'egg', 5), makeEnemy(3600, groundY - 70, 'onion', 5),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(400, groundY - 30, 5), makeHealthPickup(1100, groundY - 30, 5), makeHealthPickup(1800, groundY - 30, 5), makeHealthPickup(2500, groundY - 30, 5), makeHealthPickup(3300, groundY - 30, 5)],
+        ammoPickups: [makeAmmoPickup(600, groundY - 30), makeAmmoPickup(1300, groundY - 30), makeAmmoPickup(2000, groundY - 30), makeAmmoPickup(2700, groundY - 30), makeAmmoPickup(3400, groundY - 30)],
+        cjAbilityPickups: [makeCJPickup(1700, 220, 'combat_roll')],
+      });
+
+    case 17:
+      // Chapter 9: War Zone — heavy combat
+      return L({
+        width: 4000, groundY, isBossLevel: false, chapter: 9,
+        platforms: [
+          { x: 0, y: groundY, width: 4000, height: 100 },
+          { x: 200, y: 400, width: 200, height: 20 }, { x: 500, y: 340, width: 160, height: 20 },
+          { x: 800, y: 280, width: 180, height: 20 }, { x: 1100, y: 370, width: 200, height: 20 },
+          { x: 1400, y: 300, width: 150, height: 20 }, { x: 1700, y: 250, width: 180, height: 20 },
+          { x: 2000, y: 380, width: 200, height: 20 }, { x: 2300, y: 300, width: 160, height: 20 },
+          { x: 2600, y: 260, width: 180, height: 20 }, { x: 2900, y: 370, width: 200, height: 20 },
+          { x: 3200, y: 290, width: 160, height: 20 }, { x: 3500, y: 340, width: 200, height: 20 },
+          { x: 3750, y: 380, width: 160, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(350, groundY - 70, 'onion', 5), makeEnemy(650, groundY - 70, 'egg', 5),
+          makeEnemy(950, groundY - 70, 'onion', 5), makeEnemy(1200, groundY - 70, 'egg', 5),
+          makeEnemy(1500, groundY - 70, 'onion', 5.5), makeEnemy(1800, groundY - 70, 'egg', 5),
+          makeEnemy(2100, groundY - 70, 'onion', 5.5), makeEnemy(2400, groundY - 70, 'egg', 5.5),
+          makeEnemy(2700, groundY - 70, 'onion', 5), makeEnemy(3000, groundY - 70, 'egg', 5.5),
+          makeEnemy(3300, groundY - 70, 'onion', 6), makeEnemy(3600, groundY - 70, 'egg', 5.5),
+          makeEnemy(3850, groundY - 70, 'onion', 6),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(500, groundY - 30, 5), makeHealthPickup(1100, groundY - 30, 5), makeHealthPickup(1700, groundY - 30, 5), makeHealthPickup(2300, groundY - 30, 5), makeHealthPickup(3000, groundY - 30, 5), makeHealthPickup(3600, groundY - 30, 5)],
+        ammoPickups: [makeAmmoPickup(400, groundY - 30, 15), makeAmmoPickup(1000, groundY - 30, 15), makeAmmoPickup(1600, groundY - 30, 15), makeAmmoPickup(2200, groundY - 30, 15), makeAmmoPickup(2800, groundY - 30, 15), makeAmmoPickup(3400, groundY - 30, 15)],
+        cjAbilityPickups: [makeCJPickup(2600, 230, 'airstrike')],
+      });
+
+    case 18:
+    default:
+      // Chapter 10: The Rotten Tank — CJ's Final Boss
+      return L({
+        width: 1500, groundY, isBossLevel: true, chapter: 10,
+        platforms: [
+          { x: 0, y: groundY, width: 1500, height: 100 },
+          { x: 150, y: 390, width: 150, height: 20 }, { x: 450, y: 330, width: 180, height: 20 },
+          { x: 800, y: 390, width: 150, height: 20 }, { x: 1100, y: 330, width: 180, height: 20 },
+          { x: 300, y: 250, width: 130, height: 20 }, { x: 700, y: 250, width: 130, height: 20 },
+          { x: 1000, y: 250, width: 130, height: 20 },
+        ],
+        enemies: [],
+        boss: makeRottenTank(700, groundY - 140),
+        weaponPickups: [],
+        healthPickups: [makeHealthPickup(200, groundY - 30, 5), makeHealthPickup(600, groundY - 30, 5), makeHealthPickup(1000, groundY - 30, 5)],
+        ammoPickups: [makeAmmoPickup(350, groundY - 30, 20), makeAmmoPickup(850, groundY - 30, 20)],
       });
   }
 };
