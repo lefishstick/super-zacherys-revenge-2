@@ -1912,6 +1912,43 @@ export function useGameLoop() {
       ctx.fillText(aDef.name, apx + ap.width / 2, floatY - 10);
     }
 
+    // Draw CJ ability pickups
+    for (const cap of s.level.cjAbilityPickups) {
+      if (cap.collected) continue;
+      const capx = cap.x - camX;
+      if (capx + cap.width < -50 || capx > CANVAS_W + 50) continue;
+      const aDef = CJ_ABILITIES[cap.ability];
+      const t2 = Date.now() * 0.003;
+      const floatY2 = cap.y + Math.sin(t2 * 1.2 + cap.x) * 6;
+      ctx.save();
+      ctx.shadowColor = aDef.glowColor;
+      ctx.shadowBlur = 18 + Math.sin(t2 * 2) * 6;
+      ctx.fillStyle = aDef.color;
+      ctx.beginPath();
+      ctx.arc(capx + cap.width / 2, floatY2 + cap.height / 2, cap.width / 2 + 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.9; ctx.font = '14px serif'; ctx.textAlign = 'center';
+      ctx.fillText('⚙', capx + cap.width / 2, floatY2 + cap.height / 2 + 5);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+      ctx.fillStyle = aDef.color; ctx.font = '10px MedievalSharp'; ctx.textAlign = 'center';
+      ctx.fillText(aDef.name, capx + cap.width / 2, floatY2 - 10);
+    }
+
+    // Draw ammo pickups
+    for (const amp of s.level.ammoPickups) {
+      if (amp.collected) continue;
+      const amx = amp.x - camX;
+      if (amx + amp.width < -50 || amx > CANVAS_W + 50) continue;
+      const t2 = Date.now() * 0.003;
+      const floatY2 = amp.y + Math.sin(t2 + amp.x) * 4;
+      ctx.save();
+      ctx.shadowColor = '#ffdd44'; ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ffdd44';
+      ctx.fillRect(amx + 2, floatY2 + 2, amp.width - 4, amp.height - 4);
+      ctx.fillStyle = '#000'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('A', amx + amp.width / 2, floatY2 + amp.height / 2 + 4);
+      ctx.shadowBlur = 0; ctx.restore();
+    }
 
     for (const e of s.level.enemies) {
       if (!e.isAlive) continue;
