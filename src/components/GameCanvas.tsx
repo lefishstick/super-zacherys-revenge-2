@@ -313,5 +313,3 @@ const GameCanvas = () => {
 };
 
 export default GameCanvas;
-
-export default GameCanvas;
