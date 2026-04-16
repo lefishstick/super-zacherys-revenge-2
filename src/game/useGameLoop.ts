@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES, CJAbility, CJ_ABILITIES } from './types';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -8,6 +8,8 @@ import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
 import rottenCoreImg from '/images/rotten-core.png';
 import leviImg from '/images/levi.png';
+import cjImg from '/images/cj.png';
+import rottenTankImg from '/images/rotten-tank.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
