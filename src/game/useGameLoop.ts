@@ -1133,8 +1133,10 @@ export function useGameLoop() {
       if (b.x < 0) { b.x = 0; b.velocityX *= -1; }
       if (b.x > level.width - b.width) { b.x = level.width - b.width; b.velocityX *= -1; }
 
-      // Phase cutscene events for Rotten Core
-      const phaseEvents = isRottenCore
+      // Phase cutscene events
+      const phaseEvents = isRottenTank
+        ? { 2: 'tank_phase2', 3: 'tank_phase3' }
+        : isRottenCore
         ? { 2: 'core_phase2', 3: 'core_phase3' }
         : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
