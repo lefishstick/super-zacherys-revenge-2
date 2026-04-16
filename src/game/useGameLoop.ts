@@ -69,6 +69,9 @@ export function useGameLoop() {
     flashbangFlash: 0,
     // Track if E key was just pressed (edge detect)
     eWasUp: true,
+    // CJ special selector: 0=grenade, 1=flashbang, 2=airstrike
+    cjSpecialIndex: 0,
+    eWasUpCycle: true,
   });
 
   const loadImages = useCallback(() => {
@@ -448,114 +451,42 @@ export function useGameLoop() {
       }
     }
 
-    // Attack
+    // === J KEY: Primary attack only (no modifier combos) ===
     if (keys.has('z') || keys.has('j')) {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
-        
+
         if (p.isCJ) {
-          // CJ ATTACK: Glock shoot, grenade (S+J), flashbang (W+J), airstrike (E key)
-          p.attackTimer = 12; // Fast fire rate
-          if (p.cjAbilities.includes('frag_grenade') && p.grenadeCount > 0 && (keys.has('arrowdown') || keys.has('s'))) {
-            // Throw grenade — lower arc so it actually hits enemies
-            p.grenadeCount--;
-            p.attackTimer = 20;
-            s.projectiles.push({
-              x: p.x + (p.facingRight ? p.width : -15),
-              y: p.y + p.height / 2 - 5,
-              width: 14, height: 14,
-              velocityX: (p.facingRight ? 1 : -1) * 9,
-              velocityY: -3,
-              isPlayerProjectile: true,
-              damage: 8,
-              lifetime: 55,
-              isGrenade: true,
-              grenadeTimer: 55,
-              aoeRadius: 130,
-            });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 10);
-          } else if (p.cjAbilities.includes('flashbang') && (keys.has('arrowup') || keys.has('w'))) {
-            // Flashbang — throw a blinding grenade that stuns all on-screen enemies
-            p.attackTimer = 70;
-            // White flash overlay
-            s.flashbangFlash = 25;
-            spawnParticles(p.x + p.width / 2, p.y, '#ffffff', 40);
-            spawnParticles(p.x + p.width / 2, p.y, '#ffffaa', 30);
-            for (const e of level.enemies) {
-              if (!e.isAlive) continue;
-              const ex = e.x - s.cameraX;
-              if (ex > -100 && ex < 1060) {
-                e.stunTimer = 180; // 3 seconds stun (checked in movement)
-                e.velocityX = 0;
-                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 12);
-                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffff', 8);
-              }
-            }
-            // Boss gets stunned too (shorter)
-            if (level.boss?.isAlive) {
-              level.boss.attackCooldown = 120;
-            }
-          } else if (p.ammo > 0) {
-            // Glock shot
+          // CJ J = shoot glock (primary only)
+          p.attackTimer = 12;
+          if (p.ammo > 0) {
             p.ammo--;
             s.projectiles.push({
               x: p.x + (p.facingRight ? p.width : -10),
-              y: p.y + p.height / 2 - 5,
-              width: 8, height: 4,
-              velocityX: (p.facingRight ? 1 : -1) * 16,
+              y: p.y + p.height / 2 - 3,
+              width: 10, height: 5,
+              velocityX: (p.facingRight ? 1 : -1) * 18,
               velocityY: 0,
               isPlayerProjectile: true,
-              damage: 3,
-              lifetime: 60,
+              damage: 3, lifetime: 60,
+              isGlockBullet: true,
             });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ffdd44', 5);
-            // Muzzle flash
-            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#ffffff', 3);
+            spawnParticles(p.x + (p.facingRight ? p.width + 5 : -5), p.y + p.height / 2, '#ffee88', 4);
+            spawnParticles(p.x + (p.facingRight ? p.width + 12 : -12), p.y + p.height / 2, '#ffffff', 2);
           } else {
-            // Pistol whip — melee when out of ammo
-            p.attackTimer = 20;
-            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#888888', 5);
+            // Pistol whip when empty
+            p.attackTimer = 22;
+            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#aaaaaa', 6);
           }
+
         } else if (p.isLevi) {
-          // LEVI ATTACK: Devour, shoot devoured, or toxic spit
+          // LEVI J = devour (primary melee)
           const hasFrenzy = p.leviAbilities.includes('frenzy');
           p.attackTimer = hasFrenzy ? 12 : 20;
-          if (p.leviAbilities.includes('toxic_spit') && (keys.has('arrowdown') || keys.has('s'))) {
-            // Toxic spit — ranged acid attack
-            s.projectiles.push({
-              x: p.x + (p.facingRight ? p.width : -20),
-              y: p.y + p.height / 2 - 10,
-              width: 20, height: 20,
-              velocityX: (p.facingRight ? 1 : -1) * 10,
-              velocityY: 0,
-              isPlayerProjectile: true,
-              damage: 4,
-              lifetime: 80,
-            });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#88ff00', 10);
-          } else if (p.devouredEnemies > 0 && (keys.has('arrowup') || keys.has('w'))) {
-            // Shoot devoured enemy as projectile (hold up + attack)
-            p.devouredEnemies--;
-            s.projectiles.push({
-              x: p.x + (p.facingRight ? p.width : -20),
-              y: p.y + p.height / 2 - 10,
-              width: 25, height: 25,
-              velocityX: (p.facingRight ? 1 : -1) * 14,
-              velocityY: -2,
-              isPlayerProjectile: true,
-              damage: 8,
-              lifetime: 100,
-            });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 10);
-          } else {
-            // Devour attack — close range, high damage, eats enemies
-            spawnParticles(
-              p.x + (p.facingRight ? p.width + 15 : -15),
-              p.y + p.height / 2,
-              '#ff6600', 8
-            );
-          }
+          spawnParticles(p.x + (p.facingRight ? p.width + 15 : -15), p.y + p.height / 2, '#ff6600', 10);
+
         } else {
+          // ZACHERY: attack with current weapon
           p.attackTimer = weapon.speed;
           if (weapon.isRanged && weapon.projectileSpeed) {
             s.projectiles.push({
@@ -565,43 +496,119 @@ export function useGameLoop() {
               velocityX: (p.facingRight ? 1 : -1) * weapon.projectileSpeed,
               velocityY: 0,
               isPlayerProjectile: true,
-              damage: weapon.damage,
-              lifetime: 80,
+              damage: weapon.damage, lifetime: 80,
+              weaponId: weapon.id,
             });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, weapon.color, 6);
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, weapon.color, 8);
           } else if (weapon.aoeRadius) {
-            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 20);
+            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, weapon.color, 24);
           } else {
-            spawnParticles(
-              p.x + (p.facingRight ? p.width + 20 : -20),
-              p.y + p.height / 2,
-              weapon.color, 5
-            );
+            spawnParticles(p.x + (p.facingRight ? p.width + 20 : -20), p.y + p.height / 2, weapon.color, 6);
           }
         }
       }
     }
 
-    // === CJ AIRSTRIKE (E key, standalone) ===
-    if (p.isCJ && p.cjAbilities.includes('airstrike')) {
-      const eDown = keys.has('e');
-      if (eDown && s.eWasUp && p.attackTimer <= 0) {
-        p.attackTimer = 100;
-        s.eWasUp = false;
-        // Queue 8 bombs with staggered frame delays
-        for (let i = 0; i < 8; i++) {
-          const strikeX = p.x + (Math.random() - 0.5) * 500;
-          s.pendingAirstrikes.push({ x: strikeX, frameDelay: i * 6 });
-          s.airstrikeWarnings.push({ x: strikeX, timer: i * 6 + 20 });
+    // === E KEY: Special abilities for CJ and Levi ===
+    const eDown = keys.has('e');
+    if (eDown && s.eWasUp) {
+      s.eWasUp = false;
+
+      if (p.isCJ) {
+        // Cycle cjSpecialIndex when E held and no cooldown
+        // Determine available specials in order
+        const availableSpecials: ('grenade' | 'flashbang' | 'airstrike')[] = [];
+        if (p.cjAbilities.includes('frag_grenade')) availableSpecials.push('grenade');
+        if (p.cjAbilities.includes('flashbang')) availableSpecials.push('flashbang');
+        if (p.cjAbilities.includes('airstrike')) availableSpecials.push('airstrike');
+
+        if (availableSpecials.length > 0 && p.attackTimer <= 0) {
+          // Keep index in bounds
+          s.cjSpecialIndex = s.cjSpecialIndex % availableSpecials.length;
+          const special = availableSpecials[s.cjSpecialIndex];
+          // Advance index for next press
+          s.cjSpecialIndex = (s.cjSpecialIndex + 1) % availableSpecials.length;
+
+          if (special === 'grenade' && p.grenadeCount > 0) {
+            p.grenadeCount--;
+            p.attackTimer = 22;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -15),
+              y: p.y + p.height / 2 - 5,
+              width: 14, height: 14,
+              velocityX: (p.facingRight ? 1 : -1) * 9,
+              velocityY: -3,
+              isPlayerProjectile: true,
+              damage: 8, lifetime: 55,
+              isGrenade: true, grenadeTimer: 55, aoeRadius: 130,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 12);
+
+          } else if (special === 'flashbang') {
+            p.attackTimer = 70;
+            s.flashbangFlash = 25;
+            spawnParticles(p.x + p.width / 2, p.y, '#ffffff', 40);
+            spawnParticles(p.x + p.width / 2, p.y, '#ffffaa', 30);
+            for (const e of level.enemies) {
+              if (!e.isAlive) continue;
+              const ex = e.x - s.cameraX;
+              if (ex > -100 && ex < 1060) {
+                e.stunTimer = 180;
+                e.velocityX = 0;
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 12);
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffff', 8);
+              }
+            }
+            if (level.boss?.isAlive) level.boss.attackCooldown = 120;
+
+          } else if (special === 'airstrike') {
+            p.attackTimer = 100;
+            for (let i = 0; i < 8; i++) {
+              const strikeX = p.x + (Math.random() - 0.5) * 500;
+              s.pendingAirstrikes.push({ x: strikeX, frameDelay: i * 6 });
+              s.airstrikeWarnings.push({ x: strikeX, timer: i * 6 + 20 });
+            }
+            spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 20);
+            spawnParticles(p.x + p.width / 2, p.y - 10, '#ffaa00', 15);
+          }
         }
-        // Warning flash
-        spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 20);
-        spawnParticles(p.x + p.width / 2, p.y - 10, '#ffaa00', 15);
+
+      } else if (p.isLevi && p.attackTimer <= 0) {
+        // LEVI E = ranged special
+        const hasFrenzy = p.leviAbilities.includes('frenzy');
+        p.attackTimer = hasFrenzy ? 15 : 25;
+        p.isAttacking = true;
+        if (p.devouredEnemies > 0) {
+          // Shoot devoured enemy as high-damage projectile
+          p.devouredEnemies--;
+          s.projectiles.push({
+            x: p.x + (p.facingRight ? p.width : -25),
+            y: p.y + p.height / 2 - 12,
+            width: 26, height: 26,
+            velocityX: (p.facingRight ? 1 : -1) * 14,
+            velocityY: -2,
+            isPlayerProjectile: true,
+            damage: 8, lifetime: 100,
+            isDevouredShot: true,
+          });
+          spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff4400', 12);
+        } else if (p.leviAbilities.includes('toxic_spit')) {
+          // Toxic spit ranged acid blob
+          s.projectiles.push({
+            x: p.x + (p.facingRight ? p.width : -22),
+            y: p.y + p.height / 2 - 10,
+            width: 20, height: 20,
+            velocityX: (p.facingRight ? 1 : -1) * 10,
+            velocityY: 0,
+            isPlayerProjectile: true,
+            damage: 4, lifetime: 80,
+            isToxicSpit: true,
+          });
+          spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#88ff00', 12);
+        }
       }
-      if (!eDown) s.eWasUp = true;
-    } else {
-      s.eWasUp = true;
     }
+    if (!eDown) s.eWasUp = true;
 
     // Process pending airstrike bombs (frame-based, not setTimeout)
     s.pendingAirstrikes = s.pendingAirstrikes.filter(strike => {
@@ -2263,44 +2270,82 @@ export function useGameLoop() {
       }
     }
 
-    // Draw weapon pickups
+    // Draw weapon pickups — each with a unique icon
     for (const wp of s.level.weaponPickups) {
       if (wp.collected) continue;
       const wpx = wp.x - camX;
       if (wpx + wp.width < -50 || wpx > CANVAS_W + 50) continue;
       const wDef = WEAPONS[wp.weapon];
-      const t = Date.now() * 0.003;
-      const floatY = wp.y + Math.sin(t) * 5;
-      
-      // Glow
-      ctx.save();
-      ctx.shadowColor = wDef.glowColor;
-      ctx.shadowBlur = 15 + Math.sin(t * 2) * 5;
-      ctx.fillStyle = wDef.color;
-      ctx.beginPath();
-      ctx.arc(wpx + wp.width / 2, floatY + wp.height / 2, wp.width / 2 + 2, 0, Math.PI * 2);
-      ctx.fill();
-      // Inner diamond shape
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = 0.8;
-      ctx.beginPath();
+      const wt = Date.now() * 0.003;
+      const floatY = wp.y + Math.sin(wt) * 5;
       const cx = wpx + wp.width / 2;
       const cy = floatY + wp.height / 2;
-      ctx.moveTo(cx, cy - 8);
-      ctx.lineTo(cx + 6, cy);
-      ctx.lineTo(cx, cy + 8);
-      ctx.lineTo(cx - 6, cy);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.save();
+      // Floating glow base
+      ctx.shadowColor = wDef.glowColor;
+      ctx.shadowBlur = 14 + Math.sin(wt * 2) * 5;
+      ctx.fillStyle = wDef.color + '44';
+      ctx.beginPath(); ctx.arc(cx, cy, wp.width / 2 + 6, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (wp.weapon === 'forest_blade') {
+        // Sword icon: diagonal blade
+        ctx.strokeStyle = '#aaff44'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.shadowColor = '#88ff22'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.moveTo(cx - 8, cy + 8); ctx.lineTo(cx + 8, cy - 8); ctx.stroke();
+        ctx.fillStyle = '#aaff44'; ctx.beginPath(); ctx.arc(cx + 8, cy - 8, 3, 0, Math.PI * 2); ctx.fill();
+        // Guard
+        ctx.strokeStyle = '#226600'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 4, cy + 2); ctx.lineTo(cx + 4, cy - 2); ctx.stroke();
+
+      } else if (wp.weapon === 'vine_whip') {
+        // Whip: wavy green line
+        ctx.strokeStyle = '#44dd66'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.shadowColor = '#22aa44'; ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(cx - 10, cy + 4);
+        ctx.quadraticCurveTo(cx - 3, cy - 8, cx + 4, cy + 2);
+        ctx.quadraticCurveTo(cx + 9, cy + 8, cx + 12, cy - 2);
+        ctx.stroke();
+        ctx.fillStyle = '#33aa22'; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.ellipse(cx + 12, cy - 2, 4, 3, 0.4, 0, Math.PI * 2); ctx.fill();
+
+      } else if (wp.weapon === 'static_bolt') {
+        // Lightning orb icon
+        ctx.shadowColor = '#88ccff'; ctx.shadowBlur = 12;
+        const sbGrad = ctx.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, 9);
+        sbGrad.addColorStop(0, '#ffffff'); sbGrad.addColorStop(0.5, '#aaccff'); sbGrad.addColorStop(1, '#4466cc');
+        ctx.fillStyle = sbGrad; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+        // Lightning bolt symbol
+        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(cx + 2, cy - 7); ctx.lineTo(cx - 3, cy + 1); ctx.lineTo(cx + 1, cy + 1); ctx.lineTo(cx - 2, cy + 7); ctx.lineTo(cx + 4, cy - 1); ctx.lineTo(cx, cy - 1); ctx.closePath(); ctx.fill();
+
+      } else if (wp.weapon === 'iron_fist') {
+        // Fist silhouette
+        ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 12;
+        ctx.fillStyle = '#ffaa44';
+        ctx.beginPath(); ctx.roundRect(cx - 9, cy - 7, 18, 14, 4); ctx.fill();
+        ctx.fillStyle = '#cc5500'; ctx.shadowBlur = 0;
+        for (let ki = 0; ki < 4; ki++) { ctx.beginPath(); ctx.arc(cx - 8 + ki * 5.5, cy - 7, 3, Math.PI, 0); ctx.fill(); }
+
+      } else if (wp.weapon === 'corruption_purge') {
+        // Expanding ring icon
+        ctx.shadowColor = '#dd22ff'; ctx.shadowBlur = 14;
+        ctx.strokeStyle = '#ff44ff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#aa22cc'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#ff88ff'; ctx.shadowBlur = 0;
+        for (let si = 0; si < 6; si++) { const sa = (si / 6) * Math.PI * 2 + wt * 3; ctx.beginPath(); ctx.arc(cx + Math.cos(sa) * 9, cy + Math.sin(sa) * 9, 2, 0, Math.PI * 2); ctx.fill(); }
+      }
+
       ctx.shadowBlur = 0;
       ctx.restore();
-      
       // Label
       ctx.fillStyle = wDef.color;
-      ctx.font = '10px MedievalSharp';
+      ctx.font = 'bold 10px MedievalSharp';
       ctx.textAlign = 'center';
-      ctx.fillText(wDef.name, wpx + wp.width / 2, floatY - 10);
+      ctx.fillText(wDef.name, cx, floatY - 14);
     }
 
     // Draw health pickups
@@ -2573,72 +2618,158 @@ export function useGameLoop() {
       ctx.fillText(`🍖 Devoured: ${p.devouredEnemies}`, 14, 56);
     }
 
-    // Attack effect
+    // ── Attack effect visuals (full remake) ──
     if (p.isAttacking) {
+      const at = Date.now() * 0.001;
+      ctx.save();
+
       if (p.isCJ) {
-        // CJ muzzle flash
-        const muzzleX = p.facingRight ? px + p.width + 10 : px - 15;
-        const muzzleY = p.y + p.height / 2 - 5;
-        ctx.save();
-        ctx.shadowColor = '#ffdd44';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#ffee66';
+        // CJ: dramatic muzzle flash + shell casing
+        const muzzX = p.facingRight ? px + p.width + 12 : px - 18;
+        const muzzY = p.y + p.height / 2 - 4;
+        // Outer flare
+        ctx.shadowColor = '#ff9900'; ctx.shadowBlur = 24;
+        ctx.fillStyle = '#ffcc44';
         ctx.beginPath();
-        ctx.arc(muzzleX, muzzleY, 6 + Math.random() * 4, 0, Math.PI * 2);
-        ctx.fill();
+        for (let i = 0; i < 5; i++) {
+          const ang = (i / 5) * Math.PI * 2 + at * 20;
+          const r = 10 + Math.random() * 5;
+          const ri = 4;
+          ctx.lineTo(muzzX + Math.cos(ang) * r, muzzY + Math.sin(ang) * r);
+          ctx.lineTo(muzzX + Math.cos(ang + Math.PI / 5) * ri, muzzY + Math.sin(ang + Math.PI / 5) * ri);
+        }
+        ctx.closePath(); ctx.fill();
+        // Bright core
+        ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 10;
         ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(muzzleX, muzzleY, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        ctx.beginPath(); ctx.arc(muzzX, muzzY, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
       } else if (p.isLevi) {
-        // Levi devour bite effect
-        const biteX = p.facingRight ? px + p.width : px - 40;
-        ctx.save();
-        ctx.fillStyle = '#ff660088';
+        // Levi: massive chomping jaw with drool & darkness aura
+        const biteX = p.facingRight ? px + p.width - 5 : px + 5;
+        const biteDir = p.facingRight ? 1 : -1;
+        const chomp = Math.abs(Math.sin(at * 15)) * 18;
+        // Darkness aura
+        const auraGrad = ctx.createRadialGradient(biteX + biteDir * 20, p.y + p.height / 2, 0, biteX + biteDir * 20, p.y + p.height / 2, 44);
+        auraGrad.addColorStop(0, 'rgba(255,80,0,0.6)'); auraGrad.addColorStop(1, 'rgba(255,80,0,0)');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath(); ctx.arc(biteX + biteDir * 20, p.y + p.height / 2, 44, 0, Math.PI * 2); ctx.fill();
+        // Top jaw
+        ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#ff6600'; ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(biteX + 20, p.y + p.height / 2, 30, 0, Math.PI * 2);
-        ctx.fill();
-        // Chomping jaw lines
-        ctx.strokeStyle = '#ff8800';
-        ctx.lineWidth = 3;
-        const chomp = Math.sin(Date.now() * 0.02) * 10;
-        ctx.beginPath();
-        ctx.moveTo(biteX, p.y + p.height / 2 - 15 + chomp);
-        ctx.lineTo(biteX + 40, p.y + p.height / 2);
-        ctx.lineTo(biteX, p.y + p.height / 2 + 15 - chomp);
+        ctx.moveTo(biteX, p.y + p.height / 2 - chomp);
+        ctx.quadraticCurveTo(biteX + biteDir * 25, p.y + p.height / 2 - chomp * 0.4, biteX + biteDir * 44, p.y + p.height / 2);
         ctx.stroke();
-        ctx.restore();
-      } else if (weapon.aoeRadius) {
-        ctx.strokeStyle = weapon.color;
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.5;
-        const progress = 1 - (p.attackTimer / weapon.speed);
+        // Bottom jaw
         ctx.beginPath();
-        ctx.arc(px + p.width / 2, p.y + p.height / 2, weapon.aoeRadius * progress, 0, Math.PI * 2);
+        ctx.moveTo(biteX, p.y + p.height / 2 + chomp);
+        ctx.quadraticCurveTo(biteX + biteDir * 25, p.y + p.height / 2 + chomp * 0.4, biteX + biteDir * 44, p.y + p.height / 2);
         ctx.stroke();
+        // Teeth
+        ctx.fillStyle = '#ffeecc'; ctx.shadowBlur = 0;
+        for (let t2 = 0; t2 < 4; t2++) {
+          const tx = biteX + biteDir * (8 + t2 * 9);
+          const th = 6 + Math.sin(t2) * 2;
+          ctx.beginPath(); ctx.moveTo(tx - 3, p.y + p.height / 2 - chomp * 0.5); ctx.lineTo(tx, p.y + p.height / 2 - chomp * 0.5 + th); ctx.lineTo(tx + 3, p.y + p.height / 2 - chomp * 0.5); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(tx - 3, p.y + p.height / 2 + chomp * 0.5); ctx.lineTo(tx, p.y + p.height / 2 + chomp * 0.5 - th); ctx.lineTo(tx + 3, p.y + p.height / 2 + chomp * 0.5); ctx.fill();
+        }
+
+      } else if (weapon.id === 'forest_blade') {
+        // Forest Blade: green glowing arc slash
+        const slashX = p.facingRight ? px + p.width : px;
+        const slashDir = p.facingRight ? 1 : -1;
+        const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
+        ctx.shadowColor = '#88ff44'; ctx.shadowBlur = 16;
+        ctx.strokeStyle = '#aaff44'; ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(slashX, p.y + p.height / 2, weapon.range * 0.7, -Math.PI * 0.4 * slashDir, Math.PI * 0.4 * slashDir, slashDir < 0);
+        ctx.stroke();
+        // Leaf shards along slash
+        ctx.fillStyle = '#44cc22'; ctx.shadowBlur = 6;
+        for (let li = 0; li < 5; li++) {
+          const ang = (-0.4 + li * 0.2) * Math.PI * slashDir;
+          const lr = weapon.range * 0.65 * (0.7 + progress * 0.3);
+          ctx.beginPath(); ctx.ellipse(slashX + Math.cos(ang) * lr, p.y + p.height / 2 + Math.sin(ang) * lr, 5, 3, ang + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+      } else if (weapon.id === 'vine_whip') {
+        // Vine Whip: animated thorned multi-segment whip
+        const wStartX = p.facingRight ? px + p.width : px;
+        const wEndX = p.facingRight ? px + p.width + weapon.range : px - weapon.range;
+        const wMidX = (wStartX + wEndX) / 2;
+        const wProgress = Math.max(0, 1 - p.attackTimer / weapon.speed);
+        const wCurX = wStartX + (wEndX - wStartX) * wProgress;
+        const wAmp = 22 * Math.sin(at * 12);
+        ctx.shadowColor = '#22cc44'; ctx.shadowBlur = 8;
+        // Main vine segments
+        ctx.strokeStyle = '#2a8822'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(wStartX, p.y + p.height / 2);
+        ctx.quadraticCurveTo(wMidX * wProgress + wStartX * (1 - wProgress), p.y + p.height / 2 - wAmp, wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10);
+        ctx.stroke();
+        // Bright vine overlay
+        ctx.strokeStyle = '#44dd66'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(wStartX, p.y + p.height / 2);
+        ctx.quadraticCurveTo(wMidX * wProgress + wStartX * (1 - wProgress), p.y + p.height / 2 - wAmp, wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10);
+        ctx.stroke();
+        // Thorns
+        ctx.fillStyle = '#88ff44'; ctx.shadowBlur = 4;
+        for (let ti = 1; ti <= 4; ti++) {
+          const tFrac = ti / 5 * wProgress;
+          const tx2 = wStartX + (wCurX - wStartX) * tFrac;
+          const ty2 = p.y + p.height / 2 + Math.sin(tFrac * Math.PI) * (-wAmp);
+          const tAng = (p.facingRight ? 0.4 : -0.4) * Math.PI;
+          ctx.beginPath(); ctx.moveTo(tx2, ty2); ctx.lineTo(tx2 + Math.cos(tAng) * 7, ty2 + Math.sin(tAng) * 7); ctx.lineTo(tx2 + 2, ty2); ctx.fill();
+        }
+        // Leaf at tip
+        ctx.fillStyle = '#33aa22'; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.ellipse(wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10, 7, 4, p.facingRight ? -0.4 : 0.4, 0, Math.PI * 2); ctx.fill();
+
+      } else if (weapon.id === 'iron_fist') {
+        // Iron Fist: massive orange fist silhouette + shockwave ring
+        const fistX = p.facingRight ? px + p.width + 10 : px - 10;
+        const fistDir = p.facingRight ? 1 : -1;
+        const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
+        const fistOff = progress * 30 * fistDir;
+        // Shockwave rings
+        ctx.shadowColor = '#ff6622'; ctx.shadowBlur = 20;
+        ctx.strokeStyle = '#ff8844'; ctx.lineWidth = 3; ctx.globalAlpha = 1 - progress;
+        ctx.beginPath(); ctx.arc(fistX + fistOff, p.y + p.height / 2, weapon.range * progress, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = (1 - progress) * 0.5;
+        ctx.beginPath(); ctx.arc(fistX + fistOff, p.y + p.height / 2, weapon.range * progress * 0.6, 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = 1;
-      } else if (!weapon.isRanged) {
-        const ax = p.facingRight ? px + p.width : px - weapon.range;
-        ctx.fillStyle = weapon.color + '66';
-        if (weapon.id === 'vine_whip') {
-          ctx.strokeStyle = weapon.color;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          const startX = p.facingRight ? px + p.width : px;
-          ctx.moveTo(startX, p.y + p.height / 2);
-          const endX = p.facingRight ? px + p.width + weapon.range : px - weapon.range;
-          ctx.quadraticCurveTo(
-            (startX + endX) / 2, p.y + p.height / 2 - 30,
-            endX, p.y + p.height / 2 + 10
-          );
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.arc(ax + weapon.range / 2, p.y + p.height / 2, weapon.range / 3, 0, Math.PI * 2);
-          ctx.fill();
+        // Fist knuckle silhouette
+        ctx.fillStyle = '#ffaa44'; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.roundRect(fistX + fistOff - 14, p.y + p.height / 2 - 12, 28, 24, 5); ctx.fill();
+        ctx.fillStyle = '#cc5500'; ctx.shadowBlur = 0;
+        for (let ki = 0; ki < 4; ki++) {
+          ctx.beginPath(); ctx.arc(fistX + fistOff - 9 + ki * 6, p.y + p.height / 2 - 12, 4, Math.PI, 0); ctx.fill();
+        }
+
+      } else if (weapon.id === 'corruption_purge') {
+        // Corruption Purge: expanding concentric purple rings + sparks
+        const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
+        for (let ri = 0; ri < 3; ri++) {
+          const rProgress = Math.max(0, progress - ri * 0.15);
+          ctx.globalAlpha = Math.max(0, (1 - rProgress) * 0.8);
+          ctx.shadowColor = '#dd22ff'; ctx.shadowBlur = 18;
+          ctx.strokeStyle = ri === 0 ? '#ff44ff' : ri === 1 ? '#cc22dd' : '#8800aa';
+          ctx.lineWidth = 4 - ri;
+          ctx.beginPath(); ctx.arc(px + p.width / 2, p.y + p.height / 2, weapon.aoeRadius! * rProgress, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        // Spark bursts at ring edge
+        ctx.fillStyle = '#ff88ff';
+        for (let si = 0; si < 8; si++) {
+          const sang = (si / 8) * Math.PI * 2 + at * 6;
+          const sr = weapon.aoeRadius! * progress;
+          ctx.beginPath(); ctx.arc(px + p.width / 2 + Math.cos(sang) * sr, p.y + p.height / 2 + Math.sin(sang) * sr, 3, 0, Math.PI * 2); ctx.fill();
         }
       }
+
+      ctx.restore();
     }
 
     // Draw airstrike warning markers (red X on ground before bombs land)
@@ -2748,14 +2879,98 @@ export function useGameLoop() {
         ctx.ellipse(cx, cy - proj.height / 2 - 10, 4, 14, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
+      } else if (proj.isGlockBullet) {
+        // Glock bullet: yellow-white elongated streak with motion trail
+        const bx = ppx + proj.width / 2;
+        const by = proj.y + proj.height / 2;
+        const bDir = proj.velocityX > 0 ? 1 : -1;
+        ctx.shadowColor = '#ffee44'; ctx.shadowBlur = 8;
+        // Trail
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath(); ctx.ellipse(bx - bDir * 14, by, 12, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#ffee88';
+        ctx.beginPath(); ctx.ellipse(bx - bDir * 7, by, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        // Bullet head
+        ctx.fillStyle = '#ffffcc';
+        ctx.beginPath(); ctx.ellipse(bx, by, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+      } else if (proj.isToxicSpit) {
+        // Toxic spit: bubbling green acid blob
+        const tx2 = ppx + proj.width / 2;
+        const ty2 = proj.y + proj.height / 2;
+        const pt2 = Date.now() * 0.005;
+        ctx.shadowColor = '#44ff00'; ctx.shadowBlur = 12;
+        // Main blob with wobble
+        const wobX = Math.sin(pt2 * 3) * 2;
+        const wobY = Math.cos(pt2 * 4) * 2;
+        const blobGrad = ctx.createRadialGradient(tx2 - 3, ty2 - 3, 1, tx2, ty2, proj.width / 2);
+        blobGrad.addColorStop(0, '#aaffaa'); blobGrad.addColorStop(0.5, '#44cc00'); blobGrad.addColorStop(1, '#116600');
+        ctx.fillStyle = blobGrad;
+        ctx.beginPath(); ctx.ellipse(tx2 + wobX, ty2 + wobY, proj.width / 2 + 2, proj.height / 2, Math.sin(pt2) * 0.3, 0, Math.PI * 2); ctx.fill();
+        // Bubbles
+        ctx.fillStyle = '#88ff44'; ctx.shadowBlur = 4;
+        ctx.beginPath(); ctx.arc(tx2 - 4, ty2 - 4, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx2 + 5, ty2 + 2, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+      } else if (proj.isDevouredShot) {
+        // Devoured enemy projectile: spinning orange-red enemy ball
+        const dx2 = ppx + proj.width / 2;
+        const dy2 = proj.y + proj.height / 2;
+        const da = Date.now() * 0.01;
+        ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 16;
+        // Outer spinning ring
+        ctx.strokeStyle = '#ff6600'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(dx2, dy2, proj.width / 2 + 3, 0, Math.PI * 2); ctx.stroke();
+        // Core
+        const dGrad = ctx.createRadialGradient(dx2 - 3, dy2 - 3, 1, dx2, dy2, proj.width / 2);
+        dGrad.addColorStop(0, '#ffaa44'); dGrad.addColorStop(0.5, '#cc3300'); dGrad.addColorStop(1, '#660000');
+        ctx.fillStyle = dGrad;
+        ctx.beginPath(); ctx.arc(dx2, dy2, proj.width / 2, 0, Math.PI * 2); ctx.fill();
+        // Spinning face bits
+        ctx.fillStyle = '#ff8822'; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(dx2 + Math.cos(da) * 7, dy2 + Math.sin(da) * 7, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(dx2 + Math.cos(da + Math.PI) * 7, dy2 + Math.sin(da + Math.PI) * 7, 3, 0, Math.PI * 2); ctx.fill();
+
+      } else if (proj.weaponId === 'static_bolt') {
+        // Static Bolt: crackling electric sphere with lightning arcs
+        const sx = ppx + proj.width / 2;
+        const sy = proj.y + proj.height / 2;
+        const st = Date.now() * 0.006;
+        ctx.shadowColor = '#88ccff'; ctx.shadowBlur = 18;
+        // Core orb
+        const sGrad = ctx.createRadialGradient(sx - 2, sy - 2, 1, sx, sy, proj.width / 2);
+        sGrad.addColorStop(0, '#ffffff'); sGrad.addColorStop(0.4, '#aaccff'); sGrad.addColorStop(1, '#4466cc');
+        ctx.fillStyle = sGrad;
+        ctx.beginPath(); ctx.arc(sx, sy, proj.width / 2, 0, Math.PI * 2); ctx.fill();
+        // Lightning arc bolts
+        ctx.strokeStyle = '#aaddff'; ctx.lineWidth = 1.5;
+        for (let li = 0; li < 4; li++) {
+          const baseAng = (li / 4) * Math.PI * 2 + st * 3;
+          const lr2 = proj.width / 2 + 6;
+          ctx.beginPath();
+          ctx.moveTo(sx + Math.cos(baseAng) * (proj.width / 2 - 1), sy + Math.sin(baseAng) * (proj.width / 2 - 1));
+          const midAng = baseAng + 0.3 * (Math.sin(st * 5 + li) > 0 ? 1 : -1);
+          ctx.lineTo(sx + Math.cos(midAng) * lr2 * 0.7, sy + Math.sin(midAng) * lr2 * 0.7);
+          ctx.lineTo(sx + Math.cos(baseAng + 0.1) * lr2, sy + Math.sin(baseAng + 0.1) * lr2);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+
       } else {
+        // Enemy projectile or generic
         const projColor = proj.isPlayerProjectile ? weapon.color : '#ff4400';
-        ctx.fillStyle = projColor;
-        ctx.shadowColor = projColor;
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(ppx + proj.width / 2, proj.y + proj.height / 2, proj.width / 2, 0, Math.PI * 2);
-        ctx.fill();
+        const gx2 = ppx + proj.width / 2; const gy2 = proj.y + proj.height / 2;
+        ctx.shadowColor = projColor; ctx.shadowBlur = 12;
+        const eGrad = ctx.createRadialGradient(gx2 - 2, gy2 - 2, 1, gx2, gy2, proj.width / 2 + 2);
+        eGrad.addColorStop(0, '#ffffff'); eGrad.addColorStop(0.3, projColor); eGrad.addColorStop(1, projColor + '44');
+        ctx.fillStyle = eGrad;
+        ctx.beginPath(); ctx.arc(gx2, gy2, proj.width / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
       }
       ctx.shadowBlur = 0;
       ctx.restore();
@@ -2837,14 +3052,28 @@ export function useGameLoop() {
       ctx.font = '11px MedievalSharp';
       ctx.fillStyle = '#88aacc';
       ctx.fillText(`Ammo: ${p.ammo}/${p.maxAmmo}  |  Grenades: ${p.grenadeCount}`, 20, CANVAS_H - 22);
-      ctx.font = '10px MedievalSharp';
-      ctx.fillStyle = '#99aabb';
-      const cjCtrls: string[] = ['J:Shoot'];
-      if (p.cjAbilities.includes('frag_grenade')) cjCtrls.push('↓+J:Grenade');
-      if (p.cjAbilities.includes('flashbang')) cjCtrls.push('↑+J:Flash');
-      if (p.cjAbilities.includes('airstrike')) cjCtrls.push('E:Airstrike');
-      if (p.cjAbilities.includes('combat_roll')) cjCtrls.push('2×←/→:Roll');
-      ctx.fillText(cjCtrls.join('  '), 160, CANVAS_H - 38);
+      // CJ special selector display
+      const cjSpecials: { label: string; key: string }[] = [];
+      if (p.cjAbilities.includes('frag_grenade')) cjSpecials.push({ label: '💣 Grenade', key: 'frag_grenade' });
+      if (p.cjAbilities.includes('flashbang')) cjSpecials.push({ label: '💥 Flashbang', key: 'flashbang' });
+      if (p.cjAbilities.includes('airstrike')) cjSpecials.push({ label: '🚀 Airstrike', key: 'airstrike' });
+      if (cjSpecials.length > 0) {
+        const selIdx = s.cjSpecialIndex % cjSpecials.length;
+        let hx = 160;
+        ctx.font = '10px MedievalSharp';
+        ctx.fillText('E:', hx, CANVAS_H - 38); hx += 22;
+        cjSpecials.forEach((sp, si) => {
+          const isSelected = si === (selIdx === 0 ? cjSpecials.length - 1 : selIdx - 1);
+          ctx.fillStyle = isSelected ? '#ffee44' : '#667788';
+          if (isSelected) { ctx.fillStyle = '#ffee44aa'; ctx.fillRect(hx - 2, CANVAS_H - 50, 80, 16); ctx.fillStyle = '#ffee44'; }
+          ctx.fillText(sp.label, hx, CANVAS_H - 38);
+          hx += 84;
+        });
+      }
+      if (p.cjAbilities.includes('combat_roll')) {
+        ctx.fillStyle = '#99aabb'; ctx.font = '10px MedievalSharp';
+        ctx.fillText('2×←/→:Roll', 160, CANVAS_H - 24);
+      }
     } else if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
       ctx.fillRect(10, CANVAS_H - 60, 280, 50);
@@ -2857,8 +3086,11 @@ export function useGameLoop() {
       ctx.fillText('🦷 SUPER LEVI', 20, CANVAS_H - 38);
       ctx.font = '10px MedievalSharp';
       ctx.fillStyle = '#ccaa88';
-      const controls = ['J:Devour', '↑+J:Shoot', 'Jump:Shockwave'];
-      if (p.leviAbilities.includes('toxic_spit')) controls.push('↓+J:Spit');
+      const controls = ['J:Devour', 'Jump:Shockwave'];
+      if (p.leviAbilities.includes('toxic_spit') || p.devouredEnemies > 0) {
+        const eLabel = p.devouredEnemies > 0 ? `E:Launch(${p.devouredEnemies})` : 'E:Spit';
+        controls.push(eLabel);
+      }
       ctx.fillText(controls.join('  '), 20, CANVAS_H - 18);
     } else {
       ctx.fillStyle = '#000000aa';

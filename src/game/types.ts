@@ -185,6 +185,10 @@ export interface Projectile extends Entity {
   grenadeTimer?: number;
   aoeRadius?: number;
   isAirstrikeBomb?: boolean;
+  isToxicSpit?: boolean;
+  isDevouredShot?: boolean;
+  isGlockBullet?: boolean;
+  weaponId?: string;
 }
 
 export interface Particle {
