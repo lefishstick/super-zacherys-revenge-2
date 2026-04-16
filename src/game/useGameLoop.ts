@@ -1986,7 +1986,10 @@ export function useGameLoop() {
       
       if (bossImage?.complete) {
         ctx.save();
-        if (isRC) {
+        if (isRT) {
+          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00';
+          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.004) * 10;
+        } else if (isRC) {
           // Rotten Core: green toxic glow based on phase
           ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
           ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
