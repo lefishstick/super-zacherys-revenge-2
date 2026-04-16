@@ -811,9 +811,125 @@ export function useGameLoop() {
       b.attackCooldown--;
 
       const isRottenCore = b.bossType === 'rotten_core';
+      const isRottenTank = b.bossType === 'rotten_tank';
 
       if (b.attackCooldown <= 0) {
-        if (isRottenCore) {
+        if (isRottenTank) {
+          // ROTTEN TANK BOSS AI
+          const rng = Math.random();
+          if (b.phase === 1) {
+            if (rng < 0.4) {
+              b.attackType = 'cannon';
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              s.projectiles.push({
+                x: b.x + b.width / 2, y: b.y + b.height / 3,
+                width: 20, height: 20,
+                velocityX: Math.cos(angle) * 8, velocityY: Math.sin(angle) * 8,
+                isPlayerProjectile: false, damage: 3, lifetime: 80,
+              });
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 3, '#ff6600', 10);
+              b.attackCooldown = 60;
+            } else if (rng < 0.7) {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 7;
+              b.attackCooldown = 80;
+            } else {
+              b.attackType = 'shoot';
+              for (let i = 0; i < 3; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (i - 1) * 0.2;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 10, height: 10,
+                  velocityX: Math.cos(angle) * 7, velocityY: Math.sin(angle) * 7,
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffaa00', 8);
+              b.attackCooldown = 50;
+            }
+          } else if (b.phase === 2) {
+            if (rng < 0.3) {
+              b.attackType = 'missiles';
+              for (let i = 0; i < 4; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2 + (i - 1.5) * 30, y: b.y,
+                  width: 12, height: 12,
+                  velocityX: (Math.random() - 0.5) * 4, velocityY: -10,
+                  isPlayerProjectile: false, damage: 3, lifetime: 100,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y, '#ff4444', 12);
+              b.attackCooldown = 55;
+            } else if (rng < 0.6) {
+              b.attackType = 'cannon';
+              for (let i = 0; i < 2; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (i - 0.5) * 0.15;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 3,
+                  width: 22, height: 22,
+                  velocityX: Math.cos(angle) * 9, velocityY: Math.sin(angle) * 9,
+                  isPlayerProjectile: false, damage: 4, lifetime: 70,
+                });
+              }
+              b.attackCooldown = 50;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 8;
+              b.attackCooldown = 70;
+            }
+          } else {
+            // Phase 3: machine gun + spawns + everything
+            if (rng < 0.25) {
+              b.attackType = 'machinegun';
+              for (let i = 0; i < 8; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (Math.random() - 0.5) * 0.4;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 8, height: 8,
+                  velocityX: Math.cos(angle) * (10 + i), velocityY: Math.sin(angle) * (10 + i),
+                  isPlayerProjectile: false, damage: 2, lifetime: 50,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffdd44', 15);
+              b.attackCooldown = 40;
+            } else if (rng < 0.5) {
+              b.attackType = 'spawn';
+              const aliveEnemies = level.enemies.filter(e => e.isAlive).length;
+              if (aliveEnemies < 4) {
+                const spawnType = Math.random() < 0.5 ? 'egg' : 'onion';
+                const enemy: Enemy = {
+                  x: b.x + (Math.random() - 0.5) * 100, y: b.y + b.height - 70,
+                  width: 60, height: 70,
+                  velocityX: (Math.random() - 0.5) * 4, velocityY: -5,
+                  type: spawnType as 'egg' | 'onion',
+                  health: spawnType === 'onion' ? 5 : 4, maxHealth: spawnType === 'onion' ? 5 : 4,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                };
+                level.enemies.push(enemy);
+                spawnParticles(enemy.x + 30, enemy.y + 35, '#ff6600', 10);
+              }
+              b.attackCooldown = 45;
+            } else if (rng < 0.75) {
+              b.attackType = 'missiles';
+              for (let i = 0; i < 6; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2 + (i - 2.5) * 25, y: b.y,
+                  width: 12, height: 12,
+                  velocityX: (Math.random() - 0.5) * 6, velocityY: -12,
+                  isPlayerProjectile: false, damage: 3, lifetime: 100,
+                });
+              }
+              b.attackCooldown = 40;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 10;
+              b.attackCooldown = 55;
+            }
+          }
+        } else if (isRottenCore) {
           // ROTTEN CORE BOSS AI
           const rng = Math.random();
           if (b.phase === 1) {
