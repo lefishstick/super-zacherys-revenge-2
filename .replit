@@ -11,6 +11,19 @@ run = ["npm", "run", "preview"]
 build = ["npm", "run", "build"]
 
 [workflows]
+modules = ["nodejs-20", "web"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm", "run", "preview"]
+build = ["npm", "run", "build"]
+
+[workflows]
 runButton = "Project"
 
 [[workflows.workflow]]
@@ -41,5 +54,10 @@ externalPort = 80
 [[ports]]
 localPort = 4174
 externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
 
 
