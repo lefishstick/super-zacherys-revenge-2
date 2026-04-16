@@ -4,8 +4,18 @@ export type WeaponType = 'forest_blade' | 'vine_whip' | 'static_bolt' | 'iron_fi
 
 export type LeviAbility = 'mega_chomp' | 'toxic_spit' | 'belly_slam' | 'frenzy';
 
+export type CJAbility = 'frag_grenade' | 'flashbang' | 'airstrike' | 'combat_roll';
+
 export interface LeviAbilityDef {
   id: LeviAbility;
+  name: string;
+  description: string;
+  color: string;
+  glowColor: string;
+}
+
+export interface CJAbilityDef {
+  id: CJAbility;
   name: string;
   description: string;
   color: string;
@@ -31,6 +41,25 @@ export const LEVI_ABILITIES: Record<LeviAbility, LeviAbilityDef> = {
   },
 };
 
+export const CJ_ABILITIES: Record<CJAbility, CJAbilityDef> = {
+  frag_grenade: {
+    id: 'frag_grenade', name: 'Frag Grenade', description: 'Throw an explosive grenade that deals AOE damage.',
+    color: '#44aa44', glowColor: '#228822',
+  },
+  flashbang: {
+    id: 'flashbang', name: 'Flashbang', description: 'Stun all enemies on screen for 3 seconds.',
+    color: '#ffffaa', glowColor: '#dddd88',
+  },
+  airstrike: {
+    id: 'airstrike', name: 'Air Strike', description: 'Call in an artillery barrage on the battlefield.',
+    color: '#ff4444', glowColor: '#cc2222',
+  },
+  combat_roll: {
+    id: 'combat_roll', name: 'Combat Roll', description: 'Dodge roll with invincibility frames. Double-tap direction.',
+    color: '#4488ff', glowColor: '#2266cc',
+  },
+};
+
 export interface LeviAbilityPickup {
   x: number;
   y: number;
@@ -40,13 +69,22 @@ export interface LeviAbilityPickup {
   collected: boolean;
 }
 
+export interface CJAbilityPickup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  ability: CJAbility;
+  collected: boolean;
+}
+
 export interface WeaponDef {
   id: WeaponType;
   name: string;
   description: string;
   damage: number;
   range: number;
-  speed: number; // attack cooldown in frames
+  speed: number;
   isRanged: boolean;
   projectileSpeed?: number;
   aoeRadius?: number;
@@ -108,8 +146,14 @@ export interface Player extends Entity {
   currentWeapon: WeaponType;
   weapons: WeaponType[];
   isLevi: boolean;
+  isCJ: boolean;
   devouredEnemies: number;
   leviAbilities: LeviAbility[];
+  cjAbilities: CJAbility[];
+  grenadeCount: number;
+  grenadeCooldown: number;
+  ammo: number;
+  maxAmmo: number;
 }
 
 export interface Enemy extends Entity {
@@ -127,15 +171,18 @@ export interface Boss extends Entity {
   isAlive: boolean;
   phase: number;
   attackCooldown: number;
-  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn';
+  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn' | 'cannon' | 'missiles' | 'machinegun';
   direction: number;
-  bossType?: 'colossus' | 'rotten_core';
+  bossType?: 'colossus' | 'rotten_core' | 'rotten_tank';
 }
 
 export interface Projectile extends Entity {
   isPlayerProjectile: boolean;
   damage: number;
   lifetime: number;
+  isGrenade?: boolean;
+  grenadeTimer?: number;
+  aoeRadius?: number;
 }
 
 export interface Particle {
@@ -165,6 +212,15 @@ export interface HealthPickup {
   collected: boolean;
 }
 
+export interface AmmoPickup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  ammoAmount: number;
+  collected: boolean;
+}
+
 export interface Level {
   platforms: Platform[];
   enemies: Enemy[];
@@ -175,6 +231,8 @@ export interface Level {
   weaponPickups: WeaponPickup[];
   healthPickups: HealthPickup[];
   leviAbilityPickups: LeviAbilityPickup[];
+  cjAbilityPickups: CJAbilityPickup[];
+  ammoPickups: AmmoPickup[];
   chapter: number;
 }
 
