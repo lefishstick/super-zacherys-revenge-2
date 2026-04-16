@@ -250,25 +250,142 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
-  ending: {
-    id: 'ending',
+  // ═══════════════════════════════════════════
+  // CORE ENDING — Transition to CJ
+  // ═══════════════════════════════════════════
+
+  core_ending: {
+    id: 'core_ending',
     lines: [
       { speaker: 'narrator', text: 'Super Levi opens his jaws impossibly wide.' },
       { speaker: 'narrator', text: 'He DEVOURS the Rotten Core whole — roots, metal, corruption and all.' },
       { speaker: 'narrator', text: 'The green glow fades from the forest. Mechanical parts crumble to dust.' },
-      { speaker: 'narrator', text: 'The forest falls silent. Not the unnatural silence of corruption — but the peaceful quiet of healing.' },
       { speaker: 'levi', text: '*burp* ...that was a LOT.' },
-      { speaker: 'narrator', text: 'Levi carries Zachery out of the cavern. New growth pushes through the rust.' },
-      { speaker: 'zachery', text: 'You actually ate it. The whole thing.', style: 'whisper' },
-      { speaker: 'levi', text: 'I told you. Never underestimate my appetite.' },
-      { speaker: 'narrator', text: 'The forest breathes again. Two heroes. One legacy.' },
-      { speaker: 'narrator', text: '...' },
-      { speaker: 'narrator', text: 'But deep underground… something stirs.' },
-      { speaker: 'narrator', text: 'The roots they destroyed were connected to something ELSE. Something far older.' },
+      { speaker: 'narrator', text: 'But deep underground, something stirs. The roots were connected to something ELSE.' },
       { speaker: 'narrator', text: 'And inside Levi\'s stomach… a faint green pulse begins to glow.' },
       { speaker: 'levi', text: '...uh, Zachery? I don\'t feel so good.' },
       { speaker: 'zachery', text: '...Levi?', style: 'whisper' },
-      { speaker: 'narrator', text: 'The screen goes dark. A deep rumble echoes through the earth.' },
+      { speaker: 'narrator', text: 'Then — static. A radio signal cuts through the silence.' },
+      { speaker: 'cj', text: '*crackle* This is CJ. I\'m at the perimeter. I heard the explosion. What\'s your status?' },
+      { speaker: 'zachery', text: 'CJ? Is that you? We need backup — Levi\'s down and something bigger is coming.', style: 'whisper' },
+      { speaker: 'cj', text: 'Copy that. I\'m locked and loaded. Moving in.' },
+      { speaker: 'narrator', text: 'From the forest edge, a new figure emerges. Military gear. Cold eyes. A Glock in hand.' },
+      { speaker: 'narrator', text: 'CJ steps into the war zone. This isn\'t his first battle — but it might be his last.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 8: CJ'S CAMPAIGN — BOOT CAMP
+  // ═══════════════════════════════════════════
+
+  chapter8_start: {
+    id: 'chapter8_start',
+    chapterName: 'Chapter 8: Boot Camp',
+    lines: [
+      { speaker: 'narrator', text: 'The corrupted forest has spread to the outer regions. Military camps have been overrun.' },
+      { speaker: 'narrator', text: 'CJ was stationed here when the corruption hit. He survived. Most didn\'t.' },
+      { speaker: 'cj', text: 'Base camp is trashed. These things are everywhere.' },
+      { speaker: 'cj', text: 'Good thing I came prepared.' },
+      { speaker: 'narrator', text: 'CJ checks his Glock. Full magazine. Grenades on his belt. Time to clean house.' },
+    ],
+  },
+
+  chapter8_mid: {
+    id: 'chapter8_mid',
+    lines: [
+      { speaker: 'narrator', text: 'CJ pushes through the overrun supply lines. Corrupted MechEggs have adapted to combat.' },
+      { speaker: 'cj', text: 'They\'re armored now. Regular rounds barely scratch them.' },
+      { speaker: 'narrator', text: 'Among the wreckage, CJ finds advanced military tech — experimental flashbang grenades.' },
+      { speaker: 'cj', text: 'These should even the odds.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 9: FORWARD OPERATING BASE
+  // ═══════════════════════════════════════════
+
+  chapter9_start: {
+    id: 'chapter9_start',
+    chapterName: 'Chapter 9: Forward Operating Base',
+    lines: [
+      { speaker: 'narrator', text: 'CJ reaches the Forward Operating Base. Or what\'s left of it.' },
+      { speaker: 'narrator', text: 'The corruption has fused with military hardware — tanks, weapons, everything.' },
+      { speaker: 'cj', text: 'They didn\'t just overrun the base. They ABSORBED it.' },
+      { speaker: 'narrator', text: 'Radio chatter fills the air. Someone — or something — is broadcasting from the command center.' },
+      { speaker: 'tank', text: 'INTRUDER DETECTED. ENGAGING DEFENSIVE PROTOCOLS.', style: 'distorted' },
+      { speaker: 'cj', text: '...Did that tank just talk?' },
+    ],
+  },
+
+  chapter9_mid: {
+    id: 'chapter9_mid',
+    lines: [
+      { speaker: 'narrator', text: 'The war zone intensifies. Corrupted soldiers and machines patrol every corridor.' },
+      { speaker: 'cj', text: 'Whatever turned these machines on, it\'s coming from deeper inside.' },
+      { speaker: 'narrator', text: 'CJ finds air strike coordinates — the last resort weapon left by the fallen base.' },
+      { speaker: 'cj', text: 'Air support\'s offline, but I can rig these targeting systems manually.' },
+      { speaker: 'narrator', text: 'The ground rumbles. Something massive is moving inside the hangar.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // CHAPTER 10: THE ROTTEN TANK — CJ'S FINAL BOSS
+  // ═══════════════════════════════════════════
+
+  rotten_tank_intro: {
+    id: 'rotten_tank_intro',
+    chapterName: 'Chapter 10: The Rotten Tank',
+    lines: [
+      { speaker: 'narrator', text: 'The hangar doors blast open. Dust and metal fill the air.' },
+      { speaker: 'narrator', text: 'A monstrosity rolls forward — part tank, part corrupted organism.' },
+      { speaker: 'narrator', text: 'A Rotten Onion sits in the turret. A corrupted MechEgg forms the hull. Cannons glow with toxic energy.' },
+      { speaker: 'tank', text: 'ORGANIC TARGET ACQUIRED. COMMENCING EXTERMINATION.', style: 'distorted' },
+      { speaker: 'cj', text: 'A corrupted tank? Seriously?' },
+      { speaker: 'cj', text: '...Alright. Let\'s see how you handle a real soldier.' },
+    ],
+  },
+
+  tank_phase2: {
+    id: 'tank_phase2',
+    lines: [
+      { speaker: 'narrator', text: 'The tank\'s armor cracks — revealing pulsing organic matter beneath the steel.' },
+      { speaker: 'tank', text: 'DAMAGE SUSTAINED. ACTIVATING SECONDARY WEAPONS.', style: 'distorted' },
+      { speaker: 'narrator', text: 'Missile pods emerge from the tank\'s sides. The Onion commander screeches orders.' },
+      { speaker: 'cj', text: 'It\'s got missiles now? Fine. Let\'s dance.' },
+    ],
+  },
+
+  tank_phase3: {
+    id: 'tank_phase3',
+    lines: [
+      { speaker: 'narrator', text: 'The tank\'s hull splits open. The corrupted core is exposed — a fusion of egg and machine.' },
+      { speaker: 'tank', text: 'CRITICAL DAMAGE. OVERRIDING SAFETY PROTOCOLS. FULL. POWER.', style: 'distorted' },
+      { speaker: 'narrator', text: 'Machine gun turrets spin up. The tank becomes a whirlwind of destruction.' },
+      { speaker: 'cj', text: 'This is it. Everything I\'ve got.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════
+  // ENDING — After Tank
+  // ═══════════════════════════════════════════
+
+  ending: {
+    id: 'ending',
+    lines: [
+      { speaker: 'narrator', text: 'CJ empties his last magazine into the Rotten Tank\'s exposed core.' },
+      { speaker: 'narrator', text: 'The tank shudders, groans, and collapses in a heap of twisted metal and corruption.' },
+      { speaker: 'narrator', text: 'The Onion commander screams as green energy dissipates from the wreckage.' },
+      { speaker: 'cj', text: 'Target eliminated.' },
+      { speaker: 'narrator', text: 'CJ radios in. Static at first, then…' },
+      { speaker: 'zachery', text: 'CJ? Did you make it?', style: 'whisper' },
+      { speaker: 'cj', text: 'The base is clear. Tank\'s down. But Zachery…' },
+      { speaker: 'cj', text: 'There\'s something else out here. Something the corruption was protecting.' },
+      { speaker: 'narrator', text: 'CJ looks toward the horizon. Beyond the ruined base, a massive structure glows faintly.' },
+      { speaker: 'narrator', text: 'Not natural. Not mechanical. Something… else entirely.' },
+      { speaker: 'zachery', text: 'Don\'t go alone. We\'ll come to you.', style: 'whisper' },
+      { speaker: 'levi', text: '...I\'m still hungry.' },
+      { speaker: 'cj', text: 'Then we move together. All three of us.' },
+      { speaker: 'narrator', text: 'Three heroes. One corrupted world. The real battle hasn\'t even begun.' },
       { speaker: 'narrator', text: 'TO BE CONTINUED...' },
     ],
   },
@@ -355,6 +472,44 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'narrator', text: 'Feeding Frenzy: Attack speed doubled! Devour always heals 3 HP!' },
     ],
   },
+
+  // ═══ CJ ABILITY CUTSCENES ═══
+
+  ability_frag_grenade: {
+    id: 'ability_frag_grenade', title: 'New Equipment!', chapterName: 'Frag Grenade',
+    lines: [
+      { speaker: 'narrator', text: 'Among the ruins of the army camp, CJ finds a crate of military-grade explosives.' },
+      { speaker: 'cj', text: 'M67 fragmentation grenades. Standard issue. My favorite.' },
+      { speaker: 'narrator', text: 'Frag Grenade: Press Down + J to throw. Explodes on contact for massive AOE damage!' },
+    ],
+  },
+
+  ability_flashbang: {
+    id: 'ability_flashbang', title: 'New Equipment!', chapterName: 'Flashbang',
+    lines: [
+      { speaker: 'narrator', text: 'An experimental weapons crate sits among the supply wreckage. Still intact.' },
+      { speaker: 'cj', text: 'Flashbangs. These should disorient anything — even corrupted machines.' },
+      { speaker: 'narrator', text: 'Flashbang: Press Up + J to deploy. Stuns ALL enemies on screen for 3 seconds!' },
+    ],
+  },
+
+  ability_combat_roll: {
+    id: 'ability_combat_roll', title: 'New Technique!', chapterName: 'Combat Roll',
+    lines: [
+      { speaker: 'narrator', text: 'CJ finds tactical training manuals in the base command center.' },
+      { speaker: 'cj', text: 'Evasive maneuvers. Roll, dodge, reposition. Basic but effective.' },
+      { speaker: 'narrator', text: 'Combat Roll: Double-tap Left/Right to dodge roll with invincibility frames!' },
+    ],
+  },
+
+  ability_airstrike: {
+    id: 'ability_airstrike', title: 'New Equipment!', chapterName: 'Air Strike',
+    lines: [
+      { speaker: 'narrator', text: 'CJ finds a targeting laser among the fallen soldiers\' gear.' },
+      { speaker: 'cj', text: 'The birds are still flying. If I can paint a target…' },
+      { speaker: 'narrator', text: 'Air Strike: Press S + Up + J to call in artillery! Rains destruction from above!' },
+    ],
+  },
 };
 
 // Map of which cutscene plays before each level
@@ -372,6 +527,11 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   11: ['chapter6_start'],
   12: ['chapter6_mid'],
   13: ['rotten_core_intro'],
+  14: ['chapter8_start'],
+  15: ['chapter8_mid'],
+  16: ['chapter9_start'],
+  17: ['chapter9_mid'],
+  18: ['rotten_tank_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up
@@ -388,6 +548,14 @@ export const LEVI_ABILITY_CUTSCENES: Record<string, string> = {
   toxic_spit: 'ability_toxic_spit',
   belly_slam: 'ability_belly_slam',
   frenzy: 'ability_frenzy',
+};
+
+// CJ ability cutscenes
+export const CJ_ABILITY_CUTSCENES: Record<string, string> = {
+  frag_grenade: 'ability_frag_grenade',
+  flashbang: 'ability_flashbang',
+  combat_roll: 'ability_combat_roll',
+  airstrike: 'ability_airstrike',
 };
 
 export const VICTORY_CUTSCENE = 'ending';

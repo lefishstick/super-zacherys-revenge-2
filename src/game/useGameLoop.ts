@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES, CJAbility, CJ_ABILITIES } from './types';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -8,6 +8,8 @@ import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
 import rottenCoreImg from '/images/rotten-core.png';
 import leviImg from '/images/levi.png';
+import cjImg from '/images/cj.png';
+import rottenTankImg from '/images/rotten-tank.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -53,7 +55,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -86,22 +88,31 @@ export function useGameLoop() {
     s.cameraX = 0;
     s.transitioning = false;
     const isLevi = s.player?.isLevi ?? false;
+    const isCJ = s.player?.isCJ ?? false;
     const leviMaxHP = 20;
     const zachMaxHP = 10;
+    const cjMaxHP = 15;
+    const maxHP = isCJ ? cjMaxHP : isLevi ? leviMaxHP : zachMaxHP;
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
       velocityX: 0, velocityY: 0,
-      health: s.player?.health ?? (isLevi ? leviMaxHP : zachMaxHP),
-      maxHealth: isLevi ? leviMaxHP : zachMaxHP,
+      health: s.player?.health ?? maxHP,
+      maxHealth: maxHP,
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
       isLevi,
+      isCJ,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
       leviAbilities: s.player?.leviAbilities ?? [],
+      cjAbilities: s.player?.cjAbilities ?? [],
+      grenadeCount: s.player?.grenadeCount ?? 3,
+      grenadeCooldown: 0,
+      ammo: s.player?.ammo ?? 30,
+      maxAmmo: isCJ ? 30 : 0,
     };
   }, []);
 
@@ -291,16 +302,18 @@ export function useGameLoop() {
           f.active = false;
           s.score += 2000;
           
-          if (s.levelNum < TOTAL_LEVELS) {
+          const bType = s.level?.boss?.bossType;
+          
+          if (bType === 'colossus') {
             // Colossus defeated — swap to Levi!
             if (s.player) {
               s.player.isLevi = true;
+              s.player.isCJ = false;
               s.player.devouredEnemies = 0;
               s.player.maxHealth = 20;
-              s.player.health = 20; // Full heal on swap
+              s.player.health = 20;
               s.player.leviAbilities = [];
             }
-            // Dispatch music change event
             window.dispatchEvent(new CustomEvent('switch_to_levi'));
             setScore(s.score);
             const nextLevel = s.levelNum + 1;
@@ -311,8 +324,30 @@ export function useGameLoop() {
               setCurrentLevel(nextLevel);
               initLevel(nextLevel);
             }
+          } else if (bType === 'rotten_core') {
+            // Rotten Core devoured — swap to CJ!
+            if (s.player) {
+              s.player.isLevi = false;
+              s.player.isCJ = true;
+              s.player.maxHealth = 15;
+              s.player.health = 15;
+              s.player.cjAbilities = [];
+              s.player.ammo = 30;
+              s.player.maxAmmo = 30;
+              s.player.grenadeCount = 3;
+            }
+            window.dispatchEvent(new CustomEvent('switch_to_cj'));
+            setScore(s.score);
+            const nextLevel = s.levelNum + 1;
+            const handler = (window as any).__handleLevelTransition;
+            if (handler) {
+              handler(nextLevel);
+            } else {
+              setCurrentLevel(nextLevel);
+              initLevel(nextLevel);
+            }
           } else {
-            // Final boss devoured — victory!
+            // Final boss (Rotten Tank) — victory!
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
@@ -401,7 +436,79 @@ export function useGameLoop() {
       if (!p.isAttacking && p.attackTimer <= 0) {
         p.isAttacking = true;
         
-        if (p.isLevi) {
+        if (p.isCJ) {
+          // CJ ATTACK: Glock shoot, grenade, flashbang, airstrike
+          p.attackTimer = 12; // Fast fire rate
+          if (p.cjAbilities.includes('frag_grenade') && p.grenadeCount > 0 && (keys.has('arrowdown') || keys.has('s'))) {
+            // Throw grenade
+            p.grenadeCount--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -15),
+              y: p.y + p.height / 2 - 10,
+              width: 12, height: 12,
+              velocityX: (p.facingRight ? 1 : -1) * 8,
+              velocityY: -6,
+              isPlayerProjectile: true,
+              damage: 6,
+              lifetime: 45,
+              isGrenade: true,
+              grenadeTimer: 45,
+              aoeRadius: 120,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 8);
+          } else if (p.cjAbilities.includes('flashbang') && (keys.has('arrowup') || keys.has('w'))) {
+            // Flashbang — stun all enemies on screen
+            p.attackTimer = 60; // Long cooldown
+            spawnParticles(p.x + p.width / 2, p.y, '#ffffaa', 30);
+            for (const e of level.enemies) {
+              if (!e.isAlive) continue;
+              const ex = e.x - s.cameraX;
+              if (ex > -100 && ex < 1060) {
+                e.attackCooldown = 180; // 3 seconds stun
+                e.velocityX = 0;
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 10);
+              }
+            }
+          } else if (p.cjAbilities.includes('airstrike') && keys.has('arrowdown') && (keys.has('arrowup') || keys.has('w'))) {
+            // Airstrike
+            p.attackTimer = 90;
+            for (let i = 0; i < 8; i++) {
+              const strikeX = p.x + (Math.random() - 0.5) * 400;
+              setTimeout(() => {
+                if (!s.level) return;
+                s.projectiles.push({
+                  x: strikeX, y: -20,
+                  width: 15, height: 15,
+                  velocityX: 0, velocityY: 12,
+                  isPlayerProjectile: true,
+                  damage: 5, lifetime: 60,
+                });
+                spawnParticles(strikeX, 50, '#ff4444', 8);
+              }, i * 100);
+            }
+            spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 15);
+          } else if (p.ammo > 0) {
+            // Glock shot
+            p.ammo--;
+            s.projectiles.push({
+              x: p.x + (p.facingRight ? p.width : -10),
+              y: p.y + p.height / 2 - 5,
+              width: 8, height: 4,
+              velocityX: (p.facingRight ? 1 : -1) * 16,
+              velocityY: 0,
+              isPlayerProjectile: true,
+              damage: 3,
+              lifetime: 60,
+            });
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ffdd44', 5);
+            // Muzzle flash
+            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#ffffff', 3);
+          } else {
+            // Pistol whip — melee when out of ammo
+            p.attackTimer = 20;
+            spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#888888', 5);
+          }
+        } else if (p.isLevi) {
           // LEVI ATTACK: Devour, shoot devoured, or toxic spit
           const hasFrenzy = p.leviAbilities.includes('frenzy');
           p.attackTimer = hasFrenzy ? 12 : 20;
@@ -546,6 +653,39 @@ export function useGameLoop() {
       }
     }
 
+    // CJ ability pickup collision
+    for (const cap of level.cjAbilityPickups) {
+      if (cap.collected) continue;
+      if (
+        p.x < cap.x + cap.width && p.x + p.width > cap.x &&
+        p.y < cap.y + cap.height && p.y + p.height > cap.y
+      ) {
+        cap.collected = true;
+        if (!p.cjAbilities.includes(cap.ability)) {
+          p.cjAbilities.push(cap.ability);
+        }
+        const aDef = CJ_ABILITIES[cap.ability];
+        spawnParticles(cap.x + cap.width / 2, cap.y + cap.height / 2, aDef.color, 30);
+        window.dispatchEvent(new CustomEvent('cj_ability_pickup', { detail: cap.ability }));
+      }
+    }
+
+    // Ammo pickup collision
+    for (const amp of level.ammoPickups) {
+      if (amp.collected) continue;
+      if (
+        p.x < amp.x + amp.width && p.x + p.width > amp.x &&
+        p.y < amp.y + amp.height && p.y + p.height > amp.y
+      ) {
+        amp.collected = true;
+        p.ammo = Math.min(p.maxAmmo, p.ammo + amp.ammoAmount);
+        spawnParticles(amp.x + amp.width / 2, amp.y + amp.height / 2, '#ffdd44', 15);
+      }
+    }
+
+    // Grenade cooldown
+    if (p.grenadeCooldown > 0) p.grenadeCooldown--;
+
 
     const atkRange = weapon.range;
     const atkX = p.facingRight ? p.x + p.width : p.x - atkRange;
@@ -671,9 +811,125 @@ export function useGameLoop() {
       b.attackCooldown--;
 
       const isRottenCore = b.bossType === 'rotten_core';
+      const isRottenTank = b.bossType === 'rotten_tank';
 
       if (b.attackCooldown <= 0) {
-        if (isRottenCore) {
+        if (isRottenTank) {
+          // ROTTEN TANK BOSS AI
+          const rng = Math.random();
+          if (b.phase === 1) {
+            if (rng < 0.4) {
+              b.attackType = 'cannon';
+              const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2));
+              s.projectiles.push({
+                x: b.x + b.width / 2, y: b.y + b.height / 3,
+                width: 20, height: 20,
+                velocityX: Math.cos(angle) * 8, velocityY: Math.sin(angle) * 8,
+                isPlayerProjectile: false, damage: 3, lifetime: 80,
+              });
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 3, '#ff6600', 10);
+              b.attackCooldown = 60;
+            } else if (rng < 0.7) {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 7;
+              b.attackCooldown = 80;
+            } else {
+              b.attackType = 'shoot';
+              for (let i = 0; i < 3; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (i - 1) * 0.2;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 10, height: 10,
+                  velocityX: Math.cos(angle) * 7, velocityY: Math.sin(angle) * 7,
+                  isPlayerProjectile: false, damage: 2, lifetime: 60,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffaa00', 8);
+              b.attackCooldown = 50;
+            }
+          } else if (b.phase === 2) {
+            if (rng < 0.3) {
+              b.attackType = 'missiles';
+              for (let i = 0; i < 4; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2 + (i - 1.5) * 30, y: b.y,
+                  width: 12, height: 12,
+                  velocityX: (Math.random() - 0.5) * 4, velocityY: -10,
+                  isPlayerProjectile: false, damage: 3, lifetime: 100,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y, '#ff4444', 12);
+              b.attackCooldown = 55;
+            } else if (rng < 0.6) {
+              b.attackType = 'cannon';
+              for (let i = 0; i < 2; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (i - 0.5) * 0.15;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 3,
+                  width: 22, height: 22,
+                  velocityX: Math.cos(angle) * 9, velocityY: Math.sin(angle) * 9,
+                  isPlayerProjectile: false, damage: 4, lifetime: 70,
+                });
+              }
+              b.attackCooldown = 50;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 8;
+              b.attackCooldown = 70;
+            }
+          } else {
+            // Phase 3: machine gun + spawns + everything
+            if (rng < 0.25) {
+              b.attackType = 'machinegun';
+              for (let i = 0; i < 8; i++) {
+                const angle = Math.atan2(p.y - (b.y + b.height / 2), p.x - (b.x + b.width / 2)) + (Math.random() - 0.5) * 0.4;
+                s.projectiles.push({
+                  x: b.x + b.width / 2, y: b.y + b.height / 2,
+                  width: 8, height: 8,
+                  velocityX: Math.cos(angle) * (10 + i), velocityY: Math.sin(angle) * (10 + i),
+                  isPlayerProjectile: false, damage: 2, lifetime: 50,
+                });
+              }
+              spawnParticles(b.x + b.width / 2, b.y + b.height / 2, '#ffdd44', 15);
+              b.attackCooldown = 40;
+            } else if (rng < 0.5) {
+              b.attackType = 'spawn';
+              const aliveEnemies = level.enemies.filter(e => e.isAlive).length;
+              if (aliveEnemies < 4) {
+                const spawnType = Math.random() < 0.5 ? 'egg' : 'onion';
+                const enemy: Enemy = {
+                  x: b.x + (Math.random() - 0.5) * 100, y: b.y + b.height - 70,
+                  width: 60, height: 70,
+                  velocityX: (Math.random() - 0.5) * 4, velocityY: -5,
+                  type: spawnType as 'egg' | 'onion',
+                  health: spawnType === 'onion' ? 5 : 4, maxHealth: spawnType === 'onion' ? 5 : 4,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                };
+                level.enemies.push(enemy);
+                spawnParticles(enemy.x + 30, enemy.y + 35, '#ff6600', 10);
+              }
+              b.attackCooldown = 45;
+            } else if (rng < 0.75) {
+              b.attackType = 'missiles';
+              for (let i = 0; i < 6; i++) {
+                s.projectiles.push({
+                  x: b.x + b.width / 2 + (i - 2.5) * 25, y: b.y,
+                  width: 12, height: 12,
+                  velocityX: (Math.random() - 0.5) * 6, velocityY: -12,
+                  isPlayerProjectile: false, damage: 3, lifetime: 100,
+                });
+              }
+              b.attackCooldown = 40;
+            } else {
+              b.attackType = 'charge';
+              b.direction = p.x < b.x ? -1 : 1;
+              b.velocityX = b.direction * 10;
+              b.attackCooldown = 55;
+            }
+          }
+        } else if (isRottenCore) {
           // ROTTEN CORE BOSS AI
           const rng = Math.random();
           if (b.phase === 1) {
@@ -877,8 +1133,10 @@ export function useGameLoop() {
       if (b.x < 0) { b.x = 0; b.velocityX *= -1; }
       if (b.x > level.width - b.width) { b.x = level.width - b.width; b.velocityX *= -1; }
 
-      // Phase cutscene events for Rotten Core
-      const phaseEvents = isRottenCore
+      // Phase cutscene events
+      const phaseEvents = isRottenTank
+        ? { 2: 'tank_phase2', 3: 'tank_phase3' }
+        : isRottenCore
         ? { 2: 'core_phase2', 3: 'core_phase3' }
         : { 2: 'boss_phase2', 3: 'boss_phase3' };
 
@@ -1401,6 +1659,73 @@ export function useGameLoop() {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    } else if (chapter === 8) {
+      // BOOT CAMP — Military base, camo green/brown
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a1a10'); skyGrad.addColorStop(0.5, '#2a2a18');
+      skyGrad.addColorStop(1, '#1a1a0a');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#2a3a1a';
+      for (let i = 0; i < 12; i++) {
+        const bx = i * 200 - (camX * 0.15) % 400;
+        ctx.fillRect(bx, 150 + Math.sin(i) * 40, 60, 200);
+        ctx.fillRect(bx - 10, 150 + Math.sin(i) * 40, 80, 10);
+      }
+      ctx.strokeStyle = '#4a5a3a'; ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const wx = i * 300 - (camX * 0.2) % 600;
+        ctx.beginPath(); ctx.moveTo(wx, CANVAS_H - 100);
+        ctx.lineTo(wx + 150, CANVAS_H - 100); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx, CANVAS_H - 100);
+        ctx.lineTo(wx, CANVAS_H - 130); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx + 150, CANVAS_H - 100);
+        ctx.lineTo(wx + 150, CANVAS_H - 130); ctx.stroke();
+      }
+    } else if (chapter === 9) {
+      // FORWARD OPERATING BASE — Industrial military, steel and fire
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0f0f0f'); skyGrad.addColorStop(0.4, '#1a1a1a');
+      skyGrad.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#2a2a2a';
+      for (let i = 0; i < 15; i++) {
+        const gx = i * 160 - (camX * 0.12) % 320;
+        ctx.fillRect(gx, 0, 8, CANVAS_H - 100);
+      }
+      ctx.strokeStyle = '#ff440044'; ctx.lineWidth = 3;
+      for (let i = 0; i < 10; i++) {
+        const vx = i * 250 - (camX * 0.2) % 500;
+        const pulse = Math.sin(t * 0.003 + i) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.4;
+        ctx.beginPath(); ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 20, CANVAS_H - 200, vx - 15, CANVAS_H - 300, vx + 10, 0);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Embers
+      ctx.fillStyle = '#ff6600';
+      for (let i = 0; i < 15; i++) {
+        const px = (i * 180 + t * 0.025) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.035 + i * 50) % (CANVAS_H - 80));
+        ctx.globalAlpha = 0.3; ctx.beginPath();
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (chapter === 10) {
+      // ROTTEN TANK ARENA — Hangar, red alert lighting
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a0505'); skyGrad.addColorStop(0.3, '#2a0a0a');
+      skyGrad.addColorStop(1, '#0a0303');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      const alertPulse = Math.sin(t * 0.005) * 0.5 + 0.5;
+      ctx.globalAlpha = alertPulse * 0.06;
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#333333';
+      for (let i = 0; i < 12; i++) {
+        const gx = i * 180 - (camX * 0.1) % 360;
+        ctx.fillRect(gx, 0, 10, CANVAS_H - 100);
+      }
     }
   };
 
@@ -1436,6 +1761,9 @@ export function useGameLoop() {
       : ch === 5 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
       : ch === 6 ? ['#2a2028','#1a1520','#0a0a10','#aa4466']
       : ch === 7 ? ['#1a2a1a','#0a1a0a','#051005','#44ff22']
+      : ch === 8 ? ['#2a3a1a','#1a2a10','#0f1a05','#6a8a44']
+      : ch === 9 ? ['#2a2a2a','#1a1a1a','#0f0f0f','#888888']
+      : ch === 10 ? ['#3a1a1a','#2a0a0a','#1a0505','#aa4444']
       : ['#3a1a1a','#2a0a0a','#1a0505','#aa2222'];
     const platColors = ch === 1 ? ['#3a2a1a','#2a5a15','#227711']
       : ch === 2 ? ['#2a2a3a','#3344aa','#2233aa']
@@ -1443,6 +1771,9 @@ export function useGameLoop() {
       : ch === 5 ? ['#2a3a2a','#44aa22','#227711']
       : ch === 6 ? ['#3a2a30','#aa4466','#883355']
       : ch === 7 ? ['#2a3a2a','#44aa22','#227711']
+      : ch === 8 ? ['#3a3a2a','#6a8a44','#4a6a33']
+      : ch === 9 ? ['#3a3a3a','#888888','#666666']
+      : ch === 10 ? ['#3a2020','#aa4444','#883333']
       : ['#3a2020','#aa3333','#882222'];
 
     // Draw platforms
@@ -1581,6 +1912,43 @@ export function useGameLoop() {
       ctx.fillText(aDef.name, apx + ap.width / 2, floatY - 10);
     }
 
+    // Draw CJ ability pickups
+    for (const cap of s.level.cjAbilityPickups) {
+      if (cap.collected) continue;
+      const capx = cap.x - camX;
+      if (capx + cap.width < -50 || capx > CANVAS_W + 50) continue;
+      const aDef = CJ_ABILITIES[cap.ability];
+      const t2 = Date.now() * 0.003;
+      const floatY2 = cap.y + Math.sin(t2 * 1.2 + cap.x) * 6;
+      ctx.save();
+      ctx.shadowColor = aDef.glowColor;
+      ctx.shadowBlur = 18 + Math.sin(t2 * 2) * 6;
+      ctx.fillStyle = aDef.color;
+      ctx.beginPath();
+      ctx.arc(capx + cap.width / 2, floatY2 + cap.height / 2, cap.width / 2 + 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.9; ctx.font = '14px serif'; ctx.textAlign = 'center';
+      ctx.fillText('⚙', capx + cap.width / 2, floatY2 + cap.height / 2 + 5);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+      ctx.fillStyle = aDef.color; ctx.font = '10px MedievalSharp'; ctx.textAlign = 'center';
+      ctx.fillText(aDef.name, capx + cap.width / 2, floatY2 - 10);
+    }
+
+    // Draw ammo pickups
+    for (const amp of s.level.ammoPickups) {
+      if (amp.collected) continue;
+      const amx = amp.x - camX;
+      if (amx + amp.width < -50 || amx > CANVAS_W + 50) continue;
+      const t2 = Date.now() * 0.003;
+      const floatY2 = amp.y + Math.sin(t2 + amp.x) * 4;
+      ctx.save();
+      ctx.shadowColor = '#ffdd44'; ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ffdd44';
+      ctx.fillRect(amx + 2, floatY2 + 2, amp.width - 4, amp.height - 4);
+      ctx.fillStyle = '#000'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('A', amx + amp.width / 2, floatY2 + amp.height / 2 + 4);
+      ctx.shadowBlur = 0; ctx.restore();
+    }
 
     for (const e of s.level.enemies) {
       if (!e.isAlive) continue;
@@ -1613,11 +1981,15 @@ export function useGameLoop() {
       const b = s.level.boss;
       const bx = b.x - camX;
       const isRC = b.bossType === 'rotten_core';
-      const bossImage = isRC ? s.images.rottenCore : s.images.boss;
+      const isRT = b.bossType === 'rotten_tank';
+      const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : s.images.boss;
       
       if (bossImage?.complete) {
         ctx.save();
-        if (isRC) {
+        if (isRT) {
+          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00';
+          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.004) * 10;
+        } else if (isRC) {
           // Rotten Core: green toxic glow based on phase
           ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
           ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
@@ -1637,24 +2009,25 @@ export function useGameLoop() {
       }
 
       // Boss health bar
-      const bossBarColor = isRC
+      const bossBarColor = isRT
+        ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00')
+        : isRC
         ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11')
         : (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900');
       ctx.fillStyle = '#330000';
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
       ctx.fillStyle = bossBarColor;
       ctx.fillRect(CANVAS_W / 2 - 150, 20, 300 * (b.health / b.maxHealth), 16);
-      ctx.strokeStyle = isRC ? '#44ff22' : '#ffaa00';
+      ctx.strokeStyle = isRT ? '#ff6600' : isRC ? '#44ff22' : '#ffaa00';
       ctx.lineWidth = 2;
       ctx.strokeRect(CANVAS_W / 2 - 150, 20, 300, 16);
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px MedievalSharp';
       ctx.textAlign = 'center';
-      ctx.fillText(isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+      ctx.fillText(isRT ? 'THE ROTTEN TANK' : isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
       
-      // Phase indicator for Rotten Core
-      if (isRC) {
-        const phaseNames = ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
+      if (isRC || isRT) {
+        const phaseNames = isRT ? ['Armored Assault', 'Missile Barrage', 'Full Power'] : ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
         ctx.fillStyle = bossBarColor;
         ctx.font = '10px MedievalSharp';
         ctx.fillText(`Phase ${b.phase}: ${phaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
