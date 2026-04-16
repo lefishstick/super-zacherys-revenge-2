@@ -14,6 +14,8 @@ const SPEAKER_COLORS: Record<string, string> = {
   voice: 'text-game-fire',
   colossus: 'text-game-boss font-bold',
   core: 'text-game-toxic font-bold',
+  cj: 'text-blue-400 font-bold',
+  tank: 'text-red-400 font-bold',
 };
 
 const SPEAKER_LABELS: Record<string, string> = {
@@ -24,6 +26,8 @@ const SPEAKER_LABELS: Record<string, string> = {
   voice: '???',
   colossus: 'The Rotten Colossus',
   core: 'The Rotten Core',
+  cj: 'Sgt. CJ',
+  tank: 'The Rotten Tank',
 };
 
 const CutsceneScreen = ({ cutscenes, onComplete }: CutsceneScreenProps) => {
