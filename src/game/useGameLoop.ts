@@ -88,22 +88,31 @@ export function useGameLoop() {
     s.cameraX = 0;
     s.transitioning = false;
     const isLevi = s.player?.isLevi ?? false;
+    const isCJ = s.player?.isCJ ?? false;
     const leviMaxHP = 20;
     const zachMaxHP = 10;
+    const cjMaxHP = 15;
+    const maxHP = isCJ ? cjMaxHP : isLevi ? leviMaxHP : zachMaxHP;
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
       velocityX: 0, velocityY: 0,
-      health: s.player?.health ?? (isLevi ? leviMaxHP : zachMaxHP),
-      maxHealth: isLevi ? leviMaxHP : zachMaxHP,
+      health: s.player?.health ?? maxHP,
+      maxHealth: maxHP,
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
       currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
       weapons: s.player?.weapons ?? ['forest_blade'],
       isLevi,
+      isCJ,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
       leviAbilities: s.player?.leviAbilities ?? [],
+      cjAbilities: s.player?.cjAbilities ?? [],
+      grenadeCount: s.player?.grenadeCount ?? 3,
+      grenadeCooldown: 0,
+      ammo: s.player?.ammo ?? 30,
+      maxAmmo: isCJ ? 30 : 0,
     };
   }, []);
 
