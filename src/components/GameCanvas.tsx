@@ -10,7 +10,9 @@ const GameCanvas = () => {
   const { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H } = useGameLoop();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const leviAudioRef = useRef<HTMLAudioElement | null>(null);
+  const cjAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isLevi, setIsLevi] = useState(false);
+  const [isCJ, setIsCJ] = useState(false);
   const [cutsceneQueue, setCutsceneQueue] = useState<Cutscene[]>([]);
   const [showCutscene, setShowCutscene] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<number | null>(null);
@@ -34,9 +36,36 @@ const GameCanvas = () => {
     return () => window.removeEventListener('switch_to_levi', handler);
   }, []);
 
+  // Listen for CJ switch event
+  useEffect(() => {
+    const handler = () => {
+      setIsCJ(true);
+      setIsLevi(false);
+      audioRef.current?.pause();
+      leviAudioRef.current?.pause();
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
+      if (!cjAudioRef.current) {
+        cjAudioRef.current = new Audio('/audio/cj-theme.mp3');
+        cjAudioRef.current.loop = true;
+        cjAudioRef.current.volume = 0.4;
+      }
+      cjAudioRef.current.play().catch(() => {});
+    };
+    window.addEventListener('switch_to_cj', handler);
+    return () => window.removeEventListener('switch_to_cj', handler);
+  }, []);
+
   useEffect(() => {
     if (gameState === 'playing' || gameState === 'cutscene') {
-      if (isLevi) {
+      if (isCJ) {
+        if (!cjAudioRef.current) {
+          cjAudioRef.current = new Audio('/audio/cj-theme.mp3');
+          cjAudioRef.current.loop = true;
+          cjAudioRef.current.volume = 0.4;
+        }
+        cjAudioRef.current.play().catch(() => {});
+      } else if (isLevi) {
         if (!leviAudioRef.current) {
           leviAudioRef.current = new Audio('/audio/levi-theme.mp3');
           leviAudioRef.current.loop = true;
@@ -56,6 +85,8 @@ const GameCanvas = () => {
       if (audioRef.current) audioRef.current.currentTime = 0;
       leviAudioRef.current?.pause();
       if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
+      cjAudioRef.current?.pause();
+      if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
     }
   }, [gameState, isLevi]);
 
@@ -186,8 +217,11 @@ const GameCanvas = () => {
     setShowVictoryCutscene(false);
     setShowCutscene(false);
     setIsLevi(false);
+    setIsCJ(false);
     leviAudioRef.current?.pause();
     if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
+    cjAudioRef.current?.pause();
+    if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
     handleStart();
   }, [handleStart]);
 
