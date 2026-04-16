@@ -6,6 +6,19 @@ import TitleScreen from './TitleScreen';
 import GameOverScreen from './GameOverScreen';
 import CutsceneScreen from './CutsceneScreen';
 
+// Chapter start levels — checkpoints are set at chapter boundaries
+const CHAPTER_START_LEVEL: Record<number, number> = {
+  1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 14, 9: 16, 10: 18,
+};
+
+function getChapterForLevel(level: number): number {
+  let chapter = 1;
+  for (const [ch, startLvl] of Object.entries(CHAPTER_START_LEVEL)) {
+    if (level >= startLvl) chapter = Number(ch);
+  }
+  return chapter;
+}
+
 const GameCanvas = () => {
   const { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H } = useGameLoop();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -17,6 +30,16 @@ const GameCanvas = () => {
   const [showCutscene, setShowCutscene] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<number | null>(null);
   const [showVictoryCutscene, setShowVictoryCutscene] = useState(false);
+  const [checkpointLevel, setCheckpointLevel] = useState(1);
+
+  // Update checkpoint whenever a new chapter starts
+  useEffect(() => {
+    const chapter = getChapterForLevel(currentLevel);
+    const startLvl = CHAPTER_START_LEVEL[chapter] ?? 1;
+    if (currentLevel === startLvl) {
+      setCheckpointLevel(startLvl);
+    }
+  }, [currentLevel]);
 
   // Listen for Levi switch event
   useEffect(() => {
@@ -235,12 +258,28 @@ const GameCanvas = () => {
     setShowCutscene(false);
     setIsLevi(false);
     setIsCJ(false);
+    setCheckpointLevel(1);
     leviAudioRef.current?.pause();
     if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
     cjAudioRef.current?.pause();
     if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
     handleStart();
   }, [handleStart]);
+
+  const handleContinue = useCallback(() => {
+    setShowCutscene(false);
+    // Determine character state for checkpoint level
+    if (checkpointLevel >= 14) {
+      setIsCJ(true);
+      setIsLevi(false);
+    } else if (checkpointLevel >= 9) {
+      setIsLevi(true);
+      setIsCJ(false);
+    }
+    handleLevelTransition(checkpointLevel);
+  }, [checkpointLevel, handleLevelTransition]);
+
+  const checkpointChapter = getChapterForLevel(checkpointLevel);
 
   return (
     <div className="relative flex items-center justify-center min-h-screen bg-background overflow-hidden">
@@ -257,7 +296,14 @@ const GameCanvas = () => {
         {showCutscene && cutsceneQueue.length > 0 && (
           <CutsceneScreen cutscenes={cutsceneQueue} onComplete={handleCutsceneComplete} />
         )}
-        {gameState === 'gameover' && <GameOverScreen score={score} onRestart={handleRestart} />}
+        {gameState === 'gameover' && (
+          <GameOverScreen
+            score={score}
+            onRestart={handleRestart}
+            onContinue={checkpointLevel > 0 ? handleContinue : undefined}
+            checkpointChapter={checkpointChapter}
+          />
+        )}
         {gameState === 'victory' && !showCutscene && (
           <GameOverScreen score={score} onRestart={handleRestart} victory />
         )}
