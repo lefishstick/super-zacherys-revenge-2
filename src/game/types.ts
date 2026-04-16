@@ -163,6 +163,7 @@ export interface Enemy extends Entity {
   isAlive: boolean;
   attackCooldown: number;
   direction: number;
+  stunTimer: number;
 }
 
 export interface Boss extends Entity {
@@ -183,6 +184,7 @@ export interface Projectile extends Entity {
   isGrenade?: boolean;
   grenadeTimer?: number;
   aoeRadius?: number;
+  isAirstrikeBomb?: boolean;
 }
 
 export interface Particle {

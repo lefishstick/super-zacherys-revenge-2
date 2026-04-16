@@ -5,7 +5,7 @@ const makeEnemy = (x: number, y: number, type: 'onion' | 'egg', healthMult = 1):
   velocityX: 0, velocityY: 0,
   type, health: Math.ceil((type === 'onion' ? 3 : 2) * healthMult),
   maxHealth: Math.ceil((type === 'onion' ? 3 : 2) * healthMult),
-  isAlive: true, attackCooldown: 0, direction: -1,
+  isAlive: true, attackCooldown: 0, direction: -1, stunTimer: 0,
 });
 
 const makeBoss = (x: number, y: number): Boss => ({

@@ -52,6 +52,23 @@ export function useGameLoop() {
       screenShake: 0,
       jWasUp: true,
     },
+    // Combat roll state
+    rollState: {
+      isRolling: false,
+      rollTimer: 0,
+      rollDir: 1,
+      lastLeftTime: 0,
+      lastRightTime: 0,
+      leftWasUp: true,
+      rightWasUp: true,
+    },
+    // Pending airstrike bombs (replaces setTimeout)
+    pendingAirstrikes: [] as { x: number; frameDelay: number }[],
+    airstrikeWarnings: [] as { x: number; timer: number }[],
+    // Flashbang flash overlay timer
+    flashbangFlash: 0,
+    // Track if E key was just pressed (edge detect)
+    eWasUp: true,
   });
 
   const loadImages = useCallback(() => {
@@ -437,56 +454,47 @@ export function useGameLoop() {
         p.isAttacking = true;
         
         if (p.isCJ) {
-          // CJ ATTACK: Glock shoot, grenade, flashbang, airstrike
+          // CJ ATTACK: Glock shoot, grenade (S+J), flashbang (W+J), airstrike (E key)
           p.attackTimer = 12; // Fast fire rate
           if (p.cjAbilities.includes('frag_grenade') && p.grenadeCount > 0 && (keys.has('arrowdown') || keys.has('s'))) {
-            // Throw grenade
+            // Throw grenade — lower arc so it actually hits enemies
             p.grenadeCount--;
+            p.attackTimer = 20;
             s.projectiles.push({
               x: p.x + (p.facingRight ? p.width : -15),
-              y: p.y + p.height / 2 - 10,
-              width: 12, height: 12,
-              velocityX: (p.facingRight ? 1 : -1) * 8,
-              velocityY: -6,
+              y: p.y + p.height / 2 - 5,
+              width: 14, height: 14,
+              velocityX: (p.facingRight ? 1 : -1) * 9,
+              velocityY: -3,
               isPlayerProjectile: true,
-              damage: 6,
-              lifetime: 45,
+              damage: 8,
+              lifetime: 55,
               isGrenade: true,
-              grenadeTimer: 45,
-              aoeRadius: 120,
+              grenadeTimer: 55,
+              aoeRadius: 130,
             });
-            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 8);
+            spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#44aa44', 10);
           } else if (p.cjAbilities.includes('flashbang') && (keys.has('arrowup') || keys.has('w'))) {
-            // Flashbang — stun all enemies on screen
-            p.attackTimer = 60; // Long cooldown
+            // Flashbang — throw a blinding grenade that stuns all on-screen enemies
+            p.attackTimer = 70;
+            // White flash overlay
+            s.flashbangFlash = 25;
+            spawnParticles(p.x + p.width / 2, p.y, '#ffffff', 40);
             spawnParticles(p.x + p.width / 2, p.y, '#ffffaa', 30);
             for (const e of level.enemies) {
               if (!e.isAlive) continue;
               const ex = e.x - s.cameraX;
               if (ex > -100 && ex < 1060) {
-                e.attackCooldown = 180; // 3 seconds stun
+                e.stunTimer = 180; // 3 seconds stun (checked in movement)
                 e.velocityX = 0;
-                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 10);
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffaa', 12);
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffffff', 8);
               }
             }
-          } else if (p.cjAbilities.includes('airstrike') && keys.has('arrowdown') && (keys.has('arrowup') || keys.has('w'))) {
-            // Airstrike
-            p.attackTimer = 90;
-            for (let i = 0; i < 8; i++) {
-              const strikeX = p.x + (Math.random() - 0.5) * 400;
-              setTimeout(() => {
-                if (!s.level) return;
-                s.projectiles.push({
-                  x: strikeX, y: -20,
-                  width: 15, height: 15,
-                  velocityX: 0, velocityY: 12,
-                  isPlayerProjectile: true,
-                  damage: 5, lifetime: 60,
-                });
-                spawnParticles(strikeX, 50, '#ff4444', 8);
-              }, i * 100);
+            // Boss gets stunned too (shorter)
+            if (level.boss?.isAlive) {
+              level.boss.attackCooldown = 120;
             }
-            spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 15);
           } else if (p.ammo > 0) {
             // Glock shot
             p.ammo--;
@@ -570,6 +578,102 @@ export function useGameLoop() {
               weapon.color, 5
             );
           }
+        }
+      }
+    }
+
+    // === CJ AIRSTRIKE (E key, standalone) ===
+    if (p.isCJ && p.cjAbilities.includes('airstrike')) {
+      const eDown = keys.has('e');
+      if (eDown && s.eWasUp && p.attackTimer <= 0) {
+        p.attackTimer = 100;
+        s.eWasUp = false;
+        // Queue 8 bombs with staggered frame delays
+        for (let i = 0; i < 8; i++) {
+          const strikeX = p.x + (Math.random() - 0.5) * 500;
+          s.pendingAirstrikes.push({ x: strikeX, frameDelay: i * 6 });
+          s.airstrikeWarnings.push({ x: strikeX, timer: i * 6 + 20 });
+        }
+        // Warning flash
+        spawnParticles(p.x + p.width / 2, p.y - 20, '#ff4444', 20);
+        spawnParticles(p.x + p.width / 2, p.y - 10, '#ffaa00', 15);
+      }
+      if (!eDown) s.eWasUp = true;
+    } else {
+      s.eWasUp = true;
+    }
+
+    // Process pending airstrike bombs (frame-based, not setTimeout)
+    s.pendingAirstrikes = s.pendingAirstrikes.filter(strike => {
+      strike.frameDelay--;
+      if (strike.frameDelay <= 0) {
+        s.projectiles.push({
+          x: strike.x, y: -30,
+          width: 18, height: 18,
+          velocityX: 0, velocityY: 14,
+          isPlayerProjectile: true,
+          damage: 8, lifetime: 70,
+          isAirstrikeBomb: true,
+        });
+        spawnParticles(strike.x, 0, '#ff4444', 6);
+        return false;
+      }
+      return true;
+    });
+
+    // Decrement airstrike warning timers
+    s.airstrikeWarnings = s.airstrikeWarnings.filter(w => {
+      w.timer--;
+      return w.timer > 0;
+    });
+
+    // Decrement flashbang flash
+    if (s.flashbangFlash > 0) s.flashbangFlash--;
+
+    // === COMBAT ROLL (double-tap A or D) ===
+    if (p.isCJ && p.cjAbilities.includes('combat_roll')) {
+      const rs = s.rollState;
+      const leftDown = keys.has('a') || keys.has('arrowleft');
+      const rightDown = keys.has('d') || keys.has('arrowright');
+      const now = Date.now();
+
+      if (leftDown && rs.leftWasUp) {
+        if (now - rs.lastLeftTime < 250 && !rs.isRolling) {
+          // Double-tap left — roll left
+          rs.isRolling = true;
+          rs.rollTimer = 28;
+          rs.rollDir = -1;
+          p.invincibleTimer = 28;
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#4488ff', 12);
+        }
+        rs.lastLeftTime = now;
+        rs.leftWasUp = false;
+      }
+      if (!leftDown) rs.leftWasUp = true;
+
+      if (rightDown && rs.rightWasUp) {
+        if (now - rs.lastRightTime < 250 && !rs.isRolling) {
+          // Double-tap right — roll right
+          rs.isRolling = true;
+          rs.rollTimer = 28;
+          rs.rollDir = 1;
+          p.invincibleTimer = 28;
+          spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#4488ff', 12);
+        }
+        rs.lastRightTime = now;
+        rs.rightWasUp = false;
+      }
+      if (!rightDown) rs.rightWasUp = true;
+
+      if (rs.isRolling) {
+        rs.rollTimer--;
+        p.velocityX = rs.rollDir * 11;
+        p.facingRight = rs.rollDir > 0;
+        if (rs.rollTimer % 4 === 0) {
+          spawnParticles(p.x + p.width / 2, p.y + p.height - 5, '#4488ff', 4);
+        }
+        if (rs.rollTimer <= 0) {
+          rs.isRolling = false;
         }
       }
     }
@@ -697,7 +801,48 @@ export function useGameLoop() {
     // Update enemies
     for (const e of level.enemies) {
       if (!e.isAlive) continue;
-      
+
+      // Stun timer — enemy is frozen when > 0
+      if (e.stunTimer > 0) {
+        e.stunTimer--;
+        e.velocityX *= 0.85;
+        e.velocityY += GRAVITY;
+        e.x += e.velocityX;
+        e.y += e.velocityY;
+        for (const plat of level.platforms) {
+          if (
+            e.x + e.width > plat.x && e.x < plat.x + plat.width &&
+            e.y + e.height > plat.y && e.y + e.height < plat.y + plat.height + 15 &&
+            e.velocityY >= 0
+          ) {
+            e.y = plat.y - e.height;
+            e.velocityY = 0;
+          }
+        }
+        // Stun sparkle effect
+        if (e.stunTimer % 8 === 0) {
+          spawnParticles(e.x + e.width / 2, e.y - 5, '#ffffaa', 3);
+        }
+        // Still check if enemy can damage the player while stunned
+        if (p.invincibleTimer <= 0) {
+          if (
+            p.x < e.x + e.width && p.x + p.width > e.x &&
+            p.y < e.y + e.height && p.y + p.height > e.y
+          ) {
+            p.health--;
+            p.invincibleTimer = 60;
+            p.velocityX = (p.x < e.x ? -1 : 1) * 6;
+            p.velocityY = -5;
+            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff0000', 10);
+            if (p.health <= 0) {
+              s.gameState = 'gameover';
+              setGameState('gameover');
+            }
+          }
+        }
+        continue;
+      }
+
       const distToPlayer = p.x - e.x;
       if (Math.abs(distToPlayer) < 300) {
         e.direction = distToPlayer > 0 ? 1 : -1;
@@ -905,7 +1050,7 @@ export function useGameLoop() {
                   velocityX: (Math.random() - 0.5) * 4, velocityY: -5,
                   type: spawnType as 'egg' | 'onion',
                   health: spawnType === 'onion' ? 5 : 4, maxHealth: spawnType === 'onion' ? 5 : 4,
-                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1, stunTimer: 0,
                 };
                 level.enemies.push(enemy);
                 spawnParticles(enemy.x + 30, enemy.y + 35, '#ff6600', 10);
@@ -1025,7 +1170,7 @@ export function useGameLoop() {
                   type: spawnType as 'egg' | 'onion',
                   health: spawnType === 'onion' ? 4 : 3,
                   maxHealth: spawnType === 'onion' ? 4 : 3,
-                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1,
+                  isAlive: true, attackCooldown: 0, direction: p.x < b.x ? -1 : 1, stunTimer: 0,
                 };
                 level.enemies.push(enemy);
                 spawnParticles(enemy.x + 30, enemy.y + 35, '#66ff22', 10);
@@ -1214,11 +1359,103 @@ export function useGameLoop() {
       }
     }
 
+    // Helper: grenade/airstrike AOE explosion
+    const triggerExplosion = (cx: number, cy: number, radius: number, dmg: number, isAirstrike = false) => {
+      const color = isAirstrike ? '#ff4400' : '#44aa44';
+      spawnParticles(cx, cy, color, 20);
+      spawnParticles(cx, cy, '#ffaa00', 15);
+      spawnParticles(cx, cy, '#ffffff', 8);
+      for (const e of level.enemies) {
+        if (!e.isAlive) continue;
+        const dx = (e.x + e.width / 2) - cx;
+        const dy = (e.y + e.height / 2) - cy;
+        if (Math.sqrt(dx * dx + dy * dy) < radius) {
+          e.health -= dmg;
+          e.velocityX = dx > 0 ? 7 : -7;
+          e.velocityY = -6;
+          spawnParticles(e.x + e.width / 2, e.y + e.height / 2, color, 10);
+          if (e.health <= 0) {
+            e.isAlive = false;
+            s.score += e.type === 'onion' ? 300 : 200;
+            spawnParticles(e.x + e.width / 2, e.y + e.height / 2, '#ffaa00', 18);
+            if (Math.random() < 0.4) {
+              level.healthPickups.push({
+                x: e.x + e.width / 2 - 12, y: e.y + e.height / 2 - 12,
+                width: 24, height: 24, healAmount: 2, collected: false,
+              });
+            }
+          }
+        }
+      }
+      if (level.boss?.isAlive) {
+        const b = level.boss;
+        const dx = (b.x + b.width / 2) - cx;
+        const dy = (b.y + b.height / 2) - cy;
+        if (Math.sqrt(dx * dx + dy * dy) < radius * 1.3) {
+          b.health -= dmg;
+          spawnParticles(b.x + b.width / 2, b.y + b.height / 2, color, 12);
+          if (b.health <= 0) { b.health = 0; startFinisher(); }
+          const pe = b.bossType === 'rotten_core' ? { 2: 'core_phase2', 3: 'core_phase3' } : b.bossType === 'rotten_tank' ? { 2: 'tank_phase2', 3: 'tank_phase3' } : { 2: 'boss_phase2', 3: 'boss_phase3' };
+          if (b.health < b.maxHealth * 0.3 && b.phase < 3 && !s.bossPhaseTriggered[3]) {
+            b.phase = 3; s.bossPhaseTriggered[3] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[3] }));
+          } else if (b.health < b.maxHealth * 0.6 && b.phase < 2 && !s.bossPhaseTriggered[2]) {
+            b.phase = 2; s.bossPhaseTriggered[2] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: pe[2] }));
+          }
+        }
+      }
+    };
+
     // Update projectiles
     s.projectiles = s.projectiles.filter(proj => {
+      proj.velocityY += proj.isGrenade ? GRAVITY * 0.6 : 0;
       proj.x += proj.velocityX;
       proj.y += proj.velocityY;
       proj.lifetime--;
+
+      // Grenade — bounce off ground/platforms, explode on timer
+      if (proj.isGrenade) {
+        let onPlatform = false;
+        for (const plat of level.platforms) {
+          if (
+            proj.x + proj.width > plat.x && proj.x < plat.x + plat.width &&
+            proj.y + proj.height > plat.y && proj.y + proj.height < plat.y + plat.height + 12 &&
+            proj.velocityY >= 0
+          ) {
+            proj.y = plat.y - proj.height;
+            proj.velocityY *= -0.35;
+            proj.velocityX *= 0.75;
+            onPlatform = true;
+          }
+        }
+        if (proj.lifetime <= 0) {
+          // Explode!
+          triggerExplosion(proj.x + proj.width / 2, proj.y + proj.height / 2, proj.aoeRadius ?? 130, proj.damage);
+          return false;
+        }
+        return true;
+      }
+
+      // Airstrike bomb — explode when it hits the ground or a platform
+      if (proj.isAirstrikeBomb) {
+        let exploded = false;
+        for (const plat of level.platforms) {
+          if (
+            proj.x + proj.width > plat.x && proj.x < plat.x + plat.width &&
+            proj.y + proj.height > plat.y && proj.y + proj.height < plat.y + plat.height + 10 &&
+            proj.velocityY >= 0
+          ) {
+            exploded = true;
+          }
+        }
+        if (exploded || proj.lifetime <= 0) {
+          triggerExplosion(proj.x + proj.width / 2, proj.y + proj.height / 2, 100, proj.damage, true);
+          return false;
+        }
+        return true;
+      }
+
       if (proj.lifetime <= 0) return false;
 
       if (proj.isPlayerProjectile) {
@@ -1974,6 +2211,27 @@ export function useGameLoop() {
         ctx.fillStyle = '#ff3333';
         ctx.fillRect(ex, e.y - 10, e.width * (e.health / e.maxHealth), 5);
       }
+
+      // Stunned overlay — yellow tint + spinning stars
+      if (e.stunTimer > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#ffffaa';
+        ctx.fillRect(ex, e.y, e.width, e.height);
+        ctx.globalAlpha = 1;
+        // Spinning star icons above the enemy
+        const starAngle = (Date.now() * 0.004 + e.x * 0.01);
+        for (let si = 0; si < 3; si++) {
+          const sa = starAngle + (Math.PI * 2 / 3) * si;
+          const sx = ex + e.width / 2 + Math.cos(sa) * 18;
+          const sy = e.y - 16 + Math.sin(sa) * 5;
+          ctx.fillStyle = '#ffee22';
+          ctx.font = '12px serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('★', sx, sy);
+        }
+        ctx.restore();
+      }
     }
 
     // Draw boss
@@ -2037,20 +2295,48 @@ export function useGameLoop() {
     // Draw player
     const px = p.x - camX;
     const playerImage = p.isCJ ? s.images.cj : p.isLevi ? s.images.levi : s.images.player;
+    const isRolling = s.rollState.isRolling;
     if (playerImage?.complete) {
       ctx.save();
-      if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
+      if (p.invincibleTimer > 0 && !isRolling && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.5;
       }
       // Character glow effects
       if (p.isCJ) {
-        ctx.shadowColor = '#4488ff';
-        ctx.shadowBlur = 10 + Math.sin(Date.now() * 0.005) * 4;
+        const rollGlow = isRolling ? 25 : 10;
+        ctx.shadowColor = isRolling ? '#88ccff' : '#4488ff';
+        ctx.shadowBlur = rollGlow + Math.sin(Date.now() * 0.005) * 4;
       } else if (p.isLevi) {
         ctx.shadowColor = '#ff6600';
         ctx.shadowBlur = 12 + Math.sin(Date.now() * 0.005) * 5;
       }
-      if (!p.facingRight) {
+
+      if (isRolling) {
+        // Combat roll: squish & stretch — player appears low and fast
+        const rollProgress = 1 - s.rollState.rollTimer / 28;
+        const squishX = 1.3 + Math.sin(rollProgress * Math.PI) * 0.3;
+        const squishY = 0.55 + Math.sin(rollProgress * Math.PI) * 0.1;
+        const centerX = px + p.width / 2;
+        const bottomY = p.y + p.height;
+        ctx.translate(centerX, bottomY);
+        if (!p.facingRight) ctx.scale(-1, 1);
+        ctx.scale(squishX, squishY);
+        ctx.drawImage(playerImage, -p.width / 2, -p.height, p.width, p.height);
+        // Roll speed lines
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#4488ff';
+        ctx.lineWidth = 2;
+        for (let li = 0; li < 3; li++) {
+          const lx = centerX - (s.rollState.rollDir > 0 ? 1 : -1) * (20 + li * 14);
+          const ly = p.y + p.height * 0.4 + li * 12;
+          ctx.beginPath();
+          ctx.moveTo(lx, ly);
+          ctx.lineTo(lx - (s.rollState.rollDir > 0 ? 1 : -1) * 18, ly);
+          ctx.stroke();
+        }
+      } else if (!p.facingRight) {
         ctx.translate(px + p.width, p.y);
         ctx.scale(-1, 1);
         ctx.drawImage(playerImage, 0, 0, p.width, p.height);
@@ -2139,17 +2425,124 @@ export function useGameLoop() {
       }
     }
 
+    // Draw airstrike warning markers (red X on ground before bombs land)
+    for (const w of s.airstrikeWarnings) {
+      const wx = w.x - camX;
+      const blink = Math.floor(w.timer / 3) % 2 === 0;
+      if (blink) {
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = '#ff2200';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#ff4400';
+        ctx.shadowBlur = 8;
+        const gy = s.level!.groundY;
+        ctx.beginPath();
+        ctx.moveTo(wx - 12, gy - 14); ctx.lineTo(wx + 12, gy - 2);
+        ctx.moveTo(wx + 12, gy - 14); ctx.lineTo(wx - 12, gy - 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+    }
+
     // Draw projectiles
     for (const proj of s.projectiles) {
       const ppx = proj.x - camX;
-      const projColor = proj.isPlayerProjectile ? weapon.color : '#ff4400';
-      ctx.fillStyle = projColor;
-      ctx.shadowColor = projColor;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(ppx + proj.width / 2, proj.y + proj.height / 2, proj.width / 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.save();
+
+      if (proj.isGrenade) {
+        // Grenade: dark green sphere with bright fuse spark
+        const cx = ppx + proj.width / 2;
+        const cy = proj.y + proj.height / 2;
+        const timeLeft = proj.lifetime;
+        const blinkFast = timeLeft < 20 && Math.floor(timeLeft / 3) % 2 === 0;
+        ctx.shadowColor = blinkFast ? '#ff4400' : '#44aa44';
+        ctx.shadowBlur = blinkFast ? 18 : 10;
+        // Body
+        const gBody = ctx.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, proj.width / 2);
+        gBody.addColorStop(0, '#88dd44');
+        gBody.addColorStop(0.6, '#336622');
+        gBody.addColorStop(1, '#1a3310');
+        ctx.fillStyle = gBody;
+        ctx.beginPath();
+        ctx.arc(cx, cy, proj.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Grenade ridges
+        ctx.strokeStyle = '#225511';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, proj.width / 2 - 2, 0, Math.PI * 2);
+        ctx.stroke();
+        // Fuse at top
+        ctx.strokeStyle = blinkFast ? '#ff6600' : '#ffcc44';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + 1, cy - proj.height / 2 + 1);
+        ctx.quadraticCurveTo(cx + 5, cy - proj.height / 2 - 4, cx + 3, cy - proj.height / 2 - 8);
+        ctx.stroke();
+        // Fuse spark
+        if (Math.random() > 0.4) {
+          ctx.fillStyle = blinkFast ? '#ff4400' : '#ffee00';
+          ctx.beginPath();
+          ctx.arc(cx + 3, cy - proj.height / 2 - 8, 2 + Math.random() * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (proj.isAirstrikeBomb) {
+        // Airstrike bomb: red teardrop falling fast with trail
+        const cx = ppx + proj.width / 2;
+        const cy = proj.y + proj.height / 2;
+        ctx.shadowColor = '#ff2200';
+        ctx.shadowBlur = 15;
+        // Bomb body
+        const bGrad = ctx.createRadialGradient(cx, cy - 2, 1, cx, cy, proj.width / 2);
+        bGrad.addColorStop(0, '#ff6644');
+        bGrad.addColorStop(0.5, '#cc2200');
+        bGrad.addColorStop(1, '#880000');
+        ctx.fillStyle = bGrad;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, proj.width / 2, proj.height / 2 + 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Nose cone
+        ctx.fillStyle = '#ffaa44';
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, cy - proj.height / 2);
+        ctx.lineTo(cx + 4, cy - proj.height / 2);
+        ctx.lineTo(cx, cy - proj.height / 2 - 7);
+        ctx.closePath();
+        ctx.fill();
+        // Fins
+        ctx.fillStyle = '#cc3300';
+        ctx.beginPath();
+        ctx.moveTo(cx - 7, cy + proj.height / 2);
+        ctx.lineTo(cx - 4, cy + proj.height / 2 - 6);
+        ctx.lineTo(cx, cy + proj.height / 2 - 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx + 7, cy + proj.height / 2);
+        ctx.lineTo(cx + 4, cy + proj.height / 2 - 6);
+        ctx.lineTo(cx, cy + proj.height / 2 - 2);
+        ctx.closePath();
+        ctx.fill();
+        // Speed trail
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = '#ff4400';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - proj.height / 2 - 10, 4, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        const projColor = proj.isPlayerProjectile ? weapon.color : '#ff4400';
+        ctx.fillStyle = projColor;
+        ctx.shadowColor = projColor;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(ppx + proj.width / 2, proj.y + proj.height / 2, proj.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     // Draw particles
@@ -2160,6 +2553,13 @@ export function useGameLoop() {
       ctx.fillRect(ptx, pt.y, pt.size, pt.size);
     }
     ctx.globalAlpha = 1;
+
+    // Flashbang flash overlay
+    if (s.flashbangFlash > 0) {
+      const flashAlpha = s.flashbangFlash / 25;
+      ctx.fillStyle = `rgba(255, 255, 220, ${flashAlpha * 0.85})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
 
     // HUD
     ctx.fillStyle = '#000000aa';
@@ -2223,8 +2623,11 @@ export function useGameLoop() {
       ctx.fillText(`Ammo: ${p.ammo}/${p.maxAmmo}  |  Grenades: ${p.grenadeCount}`, 20, CANVAS_H - 22);
       ctx.font = '10px MedievalSharp';
       ctx.fillStyle = '#99aabb';
-      const cjCtrls = ['J:Shoot', '↓+J:Grenade', '↑+J:Flash'];
-      if (p.cjAbilities.includes('airstrike')) cjCtrls.push('S+↑+J:Airstrike');
+      const cjCtrls: string[] = ['J:Shoot'];
+      if (p.cjAbilities.includes('frag_grenade')) cjCtrls.push('↓+J:Grenade');
+      if (p.cjAbilities.includes('flashbang')) cjCtrls.push('↑+J:Flash');
+      if (p.cjAbilities.includes('airstrike')) cjCtrls.push('E:Airstrike');
+      if (p.cjAbilities.includes('combat_roll')) cjCtrls.push('2×←/→:Roll');
       ctx.fillText(cjCtrls.join('  '), 160, CANVAS_H - 38);
     } else if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
