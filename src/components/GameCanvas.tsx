@@ -191,7 +191,23 @@ const GameCanvas = () => {
     return () => window.removeEventListener('levi_ability_pickup' as any, handler);
   }, [setGameStateTo]);
 
-  const handleCutsceneComplete = useCallback(() => {
+  // Handle CJ ability pickup cutscenes
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      const cutsceneId = CJ_ABILITY_CUTSCENES[e.detail];
+      if (cutsceneId) {
+        const scene = CUTSCENES[cutsceneId];
+        if (scene) {
+          setCutsceneQueue([scene]);
+          setShowCutscene(true);
+          setGameStateTo('cutscene');
+        }
+      }
+    };
+    window.addEventListener('cj_ability_pickup' as any, handler);
+    return () => window.removeEventListener('cj_ability_pickup' as any, handler);
+  }, [setGameStateTo]);
+
     setShowCutscene(false);
     setCutsceneQueue([]);
     
