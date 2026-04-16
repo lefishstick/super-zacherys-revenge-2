@@ -208,6 +208,7 @@ const GameCanvas = () => {
     return () => window.removeEventListener('cj_ability_pickup' as any, handler);
   }, [setGameStateTo]);
 
+  const handleCutsceneComplete = useCallback(() => {
     setShowCutscene(false);
     setCutsceneQueue([]);
     
