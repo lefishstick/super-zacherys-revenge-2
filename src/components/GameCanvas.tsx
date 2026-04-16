@@ -258,12 +258,61 @@ const GameCanvas = () => {
     setShowCutscene(false);
     setIsLevi(false);
     setIsCJ(false);
+    setCheckpointLevel(1);
     leviAudioRef.current?.pause();
     if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
     cjAudioRef.current?.pause();
     if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
     handleStart();
   }, [handleStart]);
+
+  const handleContinue = useCallback(() => {
+    setShowCutscene(false);
+    // Determine character state for checkpoint level
+    if (checkpointLevel >= 14) {
+      setIsCJ(true);
+      setIsLevi(false);
+    } else if (checkpointLevel >= 9) {
+      setIsLevi(true);
+      setIsCJ(false);
+    }
+    handleLevelTransition(checkpointLevel);
+  }, [checkpointLevel, handleLevelTransition]);
+
+  const checkpointChapter = getChapterForLevel(checkpointLevel);
+
+  return (
+    <div className="relative flex items-center justify-center min-h-screen bg-background overflow-hidden">
+      <div className="relative" style={{ width: CANVAS_W, height: CANVAS_H }}>
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          className="border-2 border-border rounded-lg shadow-[0_0_40px_hsl(var(--primary)/0.2)]"
+          style={{ imageRendering: 'auto' }}
+        />
+        
+        {gameState === 'title' && <TitleScreen onStart={handleStart} />}
+        {showCutscene && cutsceneQueue.length > 0 && (
+          <CutsceneScreen cutscenes={cutsceneQueue} onComplete={handleCutsceneComplete} />
+        )}
+        {gameState === 'gameover' && (
+          <GameOverScreen
+            score={score}
+            onRestart={handleRestart}
+            onContinue={checkpointLevel > 0 ? handleContinue : undefined}
+            checkpointChapter={checkpointChapter}
+          />
+        )}
+        {gameState === 'victory' && !showCutscene && (
+          <GameOverScreen score={score} onRestart={handleRestart} victory />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default GameCanvas;
 
   return (
     <div className="relative flex items-center justify-center min-h-screen bg-background overflow-hidden">
