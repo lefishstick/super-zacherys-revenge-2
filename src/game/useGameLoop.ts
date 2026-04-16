@@ -2036,14 +2036,17 @@ export function useGameLoop() {
 
     // Draw player
     const px = p.x - camX;
-    const playerImage = p.isLevi ? s.images.levi : s.images.player;
+    const playerImage = p.isCJ ? s.images.cj : p.isLevi ? s.images.levi : s.images.player;
     if (playerImage?.complete) {
       ctx.save();
       if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.5;
       }
-      // Levi glow effect
-      if (p.isLevi) {
+      // Character glow effects
+      if (p.isCJ) {
+        ctx.shadowColor = '#4488ff';
+        ctx.shadowBlur = 10 + Math.sin(Date.now() * 0.005) * 4;
+      } else if (p.isLevi) {
         ctx.shadowColor = '#ff6600';
         ctx.shadowBlur = 12 + Math.sin(Date.now() * 0.005) * 5;
       }
@@ -2070,7 +2073,23 @@ export function useGameLoop() {
 
     // Attack effect
     if (p.isAttacking) {
-      if (p.isLevi) {
+      if (p.isCJ) {
+        // CJ muzzle flash
+        const muzzleX = p.facingRight ? px + p.width + 10 : px - 15;
+        const muzzleY = p.y + p.height / 2 - 5;
+        ctx.save();
+        ctx.shadowColor = '#ffdd44';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffee66';
+        ctx.beginPath();
+        ctx.arc(muzzleX, muzzleY, 6 + Math.random() * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(muzzleX, muzzleY, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (p.isLevi) {
         // Levi devour bite effect
         const biteX = p.facingRight ? px + p.width : px - 40;
         ctx.save();
@@ -2180,11 +2199,34 @@ export function useGameLoop() {
       11: '6-1: The Living Factory',
       12: '6-2: Approach to the Core',
       13: '7-1: The Rotten Core',
+      14: '8-1: Army Camp',
+      15: '8-2: Training Grounds',
+      16: '9-1: Forward Base',
+      17: '9-2: War Zone',
+      18: '10-1: The Rotten Tank',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Weapon HUD (bottom left)
-    if (p.isLevi) {
+    if (p.isCJ) {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 300, 50);
+      ctx.strokeStyle = '#4488ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 300, 50);
+      ctx.fillStyle = '#4488ff';
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText('🔫 SGT. CJ', 20, CANVAS_H - 38);
+      ctx.font = '11px MedievalSharp';
+      ctx.fillStyle = '#88aacc';
+      ctx.fillText(`Ammo: ${p.ammo}/${p.maxAmmo}  |  Grenades: ${p.grenadeCount}`, 20, CANVAS_H - 22);
+      ctx.font = '10px MedievalSharp';
+      ctx.fillStyle = '#99aabb';
+      const cjCtrls = ['J:Shoot', '↓+J:Grenade', '↑+J:Flash'];
+      if (p.cjAbilities.includes('airstrike')) cjCtrls.push('S+↑+J:Airstrike');
+      ctx.fillText(cjCtrls.join('  '), 160, CANVAS_H - 38);
+    } else if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
       ctx.fillRect(10, CANVAS_H - 60, 280, 50);
       ctx.strokeStyle = '#ff6600';
@@ -2237,14 +2279,16 @@ export function useGameLoop() {
       
       if (f.arrowPhase === 'none') {
         const isRC = s.level?.boss?.bossType === 'rotten_core';
+        const isTank = s.level?.boss?.bossType === 'rotten_tank';
         const pulseScale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
         ctx.save();
         ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 60);
         ctx.scale(pulseScale, pulseScale);
-        ctx.fillStyle = isRC ? '#ff6600' : '#ffdd00';
+        ctx.fillStyle = isTank ? '#4488ff' : isRC ? '#ff6600' : '#ffdd00';
         ctx.font = 'bold 36px MedievalSharp';
         ctx.textAlign = 'center';
-        ctx.fillText(isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!', 0, 0);
+        const finisherText = isTank ? 'MASH J TO DESTROY!' : isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!';
+        ctx.fillText(finisherText, 0, 0);
         ctx.restore();
         
         const meterW = 400;
