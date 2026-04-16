@@ -1659,6 +1659,73 @@ export function useGameLoop() {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    } else if (chapter === 8) {
+      // BOOT CAMP — Military base, camo green/brown
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a1a10'); skyGrad.addColorStop(0.5, '#2a2a18');
+      skyGrad.addColorStop(1, '#1a1a0a');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#2a3a1a';
+      for (let i = 0; i < 12; i++) {
+        const bx = i * 200 - (camX * 0.15) % 400;
+        ctx.fillRect(bx, 150 + Math.sin(i) * 40, 60, 200);
+        ctx.fillRect(bx - 10, 150 + Math.sin(i) * 40, 80, 10);
+      }
+      ctx.strokeStyle = '#4a5a3a'; ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const wx = i * 300 - (camX * 0.2) % 600;
+        ctx.beginPath(); ctx.moveTo(wx, CANVAS_H - 100);
+        ctx.lineTo(wx + 150, CANVAS_H - 100); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx, CANVAS_H - 100);
+        ctx.lineTo(wx, CANVAS_H - 130); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx + 150, CANVAS_H - 100);
+        ctx.lineTo(wx + 150, CANVAS_H - 130); ctx.stroke();
+      }
+    } else if (chapter === 9) {
+      // FORWARD OPERATING BASE — Industrial military, steel and fire
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0f0f0f'); skyGrad.addColorStop(0.4, '#1a1a1a');
+      skyGrad.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#2a2a2a';
+      for (let i = 0; i < 15; i++) {
+        const gx = i * 160 - (camX * 0.12) % 320;
+        ctx.fillRect(gx, 0, 8, CANVAS_H - 100);
+      }
+      ctx.strokeStyle = '#ff440044'; ctx.lineWidth = 3;
+      for (let i = 0; i < 10; i++) {
+        const vx = i * 250 - (camX * 0.2) % 500;
+        const pulse = Math.sin(t * 0.003 + i) * 0.4 + 0.6;
+        ctx.globalAlpha = pulse * 0.4;
+        ctx.beginPath(); ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.bezierCurveTo(vx + 20, CANVAS_H - 200, vx - 15, CANVAS_H - 300, vx + 10, 0);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Embers
+      ctx.fillStyle = '#ff6600';
+      for (let i = 0; i < 15; i++) {
+        const px = (i * 180 + t * 0.025) % CANVAS_W;
+        const py = CANVAS_H - 80 - ((t * 0.035 + i * 50) % (CANVAS_H - 80));
+        ctx.globalAlpha = 0.3; ctx.beginPath();
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (chapter === 10) {
+      // ROTTEN TANK ARENA — Hangar, red alert lighting
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#1a0505'); skyGrad.addColorStop(0.3, '#2a0a0a');
+      skyGrad.addColorStop(1, '#0a0303');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      const alertPulse = Math.sin(t * 0.005) * 0.5 + 0.5;
+      ctx.globalAlpha = alertPulse * 0.06;
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#333333';
+      for (let i = 0; i < 12; i++) {
+        const gx = i * 180 - (camX * 0.1) % 360;
+        ctx.fillRect(gx, 0, 10, CANVAS_H - 100);
+      }
     }
   };
 
