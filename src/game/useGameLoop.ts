@@ -236,6 +236,7 @@ export function useGameLoop() {
         }
       } else if (f.arrowPhase === 'flying') {
         const isRC = s.level.boss?.bossType === 'rotten_core';
+        const isTank = s.level.boss?.bossType === 'rotten_tank';
         if (isRC) {
           // LEVI DEVOUR: Player rushes toward boss
           const p = s.player!;
@@ -250,6 +251,43 @@ export function useGameLoop() {
             f.explosionTimer = 0;
             f.screenShake = 25;
           }
+        } else if (isTank) {
+          // CJ BULLET BARRAGE: CJ dashes toward tank spraying bullets
+          const p = s.player!;
+          const targetX = f.arrowTargetX - p.width - 30;
+          const dx = targetX - p.x;
+          p.x += Math.sign(dx) * 12;
+          p.facingRight = dx > 0;
+          // Muzzle flash particles every other frame
+          if (Math.floor(f.explosionTimer) % 2 === 0) {
+            const muzzX = p.facingRight ? p.x + p.width + 15 : p.x - 15;
+            const muzzY = p.y + p.height / 2 - 5;
+            spawnParticles(muzzX, muzzY, '#ffee44', 4);
+            spawnParticles(muzzX, muzzY, '#ffffff', 2);
+            // Bullet streak toward boss
+            s.particles.push({
+              x: muzzX, y: muzzY + (Math.random() - 0.5) * 20,
+              vx: (p.facingRight ? 1 : -1) * (18 + Math.random() * 6),
+              vy: (Math.random() - 0.5) * 2,
+              life: 12, maxLife: 12,
+              color: '#ffee88', size: 3,
+            });
+            // Spent shell casing ejection
+            s.particles.push({
+              x: p.x + p.width / 2, y: p.y + p.height / 2 - 10,
+              vx: (p.facingRight ? -3 : 3) + (Math.random() - 0.5) * 2,
+              vy: -4 - Math.random() * 3,
+              life: 25, maxLife: 25,
+              color: '#ccaa22', size: 3,
+            });
+          }
+          f.explosionTimer++;
+          f.screenShake = 5;
+          if (Math.abs(dx) < 35) {
+            f.arrowPhase = 'impact';
+            f.explosionTimer = 0;
+            f.screenShake = 30;
+          }
         } else {
           // Arrow flies from left side across screen toward boss
           f.arrowX += 28;
@@ -263,24 +301,50 @@ export function useGameLoop() {
         }
       } else if (f.arrowPhase === 'impact') {
         const isRC = s.level.boss?.bossType === 'rotten_core';
+        const isTank = s.level.boss?.bossType === 'rotten_tank';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 20 - f.explosionTimer);
         
-        if (!isRC) f.arrowX += 20;
+        if (!isRC && !isTank) f.arrowX += 20;
         
         if (f.explosionTimer === 1) {
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
-          const colors = isRC ? ['#44ff22', '#ff6600', '#ffffff', '#88ff44'] : ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'];
-          for (let i = 0; i < 40; i++) {
-            s.particles.push({
-              x: bx, y: by,
-              vx: (Math.random() - 0.5) * 16,
-              vy: (Math.random() - 0.5) * 16,
-              life: 40 + Math.random() * 30, maxLife: 70,
-              color: colors[Math.floor(Math.random() * 4)],
-              size: 4 + Math.random() * 8,
-            });
+          if (isTank) {
+            // Massive bullet impact burst — yellow/white/orange
+            for (let i = 0; i < 60; i++) {
+              const ang = Math.random() * Math.PI * 2;
+              const spd = 6 + Math.random() * 14;
+              s.particles.push({
+                x: bx + (Math.random() - 0.5) * 40, y: by + (Math.random() - 0.5) * 40,
+                vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                life: 35 + Math.random() * 25, maxLife: 60,
+                color: ['#ffee44','#ffffff','#ff8800','#ffcc00','#ff4400'][Math.floor(Math.random() * 5)],
+                size: 3 + Math.random() * 9,
+              });
+            }
+            // Casings rain from above
+            for (let i = 0; i < 20; i++) {
+              s.particles.push({
+                x: bx + (Math.random() - 0.5) * 200, y: by - 80,
+                vx: (Math.random() - 0.5) * 5,
+                vy: -2 - Math.random() * 5,
+                life: 40 + Math.random() * 20, maxLife: 60,
+                color: '#ccaa22', size: 3,
+              });
+            }
+          } else {
+            const colors = isRC ? ['#44ff22', '#ff6600', '#ffffff', '#88ff44'] : ['#ff4400', '#ffdd00', '#ffffff', '#ff8800'];
+            for (let i = 0; i < 40; i++) {
+              s.particles.push({
+                x: bx, y: by,
+                vx: (Math.random() - 0.5) * 16,
+                vy: (Math.random() - 0.5) * 16,
+                life: 40 + Math.random() * 30, maxLife: 70,
+                color: colors[Math.floor(Math.random() * 4)],
+                size: 4 + Math.random() * 8,
+              });
+            }
           }
         }
         
@@ -290,10 +354,36 @@ export function useGameLoop() {
         }
       } else if (f.arrowPhase === 'exploding') {
         const isRC = s.level.boss?.bossType === 'rotten_core';
+        const isTank = s.level.boss?.bossType === 'rotten_tank';
         f.explosionTimer++;
         f.screenShake = Math.max(0, 15 - f.explosionTimer * 0.5);
         
-        if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
+        if (isTank) {
+          // Multiple staggered mini bullet explosions across the tank body
+          if (f.explosionTimer % 5 === 1 && f.explosionTimer < 70) {
+            const bx = f.arrowTargetX + (Math.random() - 0.5) * 100;
+            const by = f.arrowTargetY + (Math.random() - 0.5) * 60;
+            for (let i = 0; i < 18; i++) {
+              const ang = (Math.PI * 2 / 18) * i;
+              const spd = 3 + (f.explosionTimer / 70) * 5;
+              s.particles.push({
+                x: bx, y: by,
+                vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                life: 35 + Math.random() * 20, maxLife: 55,
+                color: ['#ffee44','#ff8800','#ff4400','#ffffff'][Math.floor(Math.random() * 4)],
+                size: 2 + Math.random() * 7,
+              });
+            }
+            // Accompanying casing spray
+            s.particles.push({
+              x: bx, y: by,
+              vx: (Math.random() - 0.5) * 6,
+              vy: -5 - Math.random() * 4,
+              life: 30, maxLife: 30,
+              color: '#ccaa22', size: 3,
+            });
+          }
+        } else if (f.explosionTimer % 8 === 1 && f.explosionTimer < 50) {
           const bx = f.arrowTargetX;
           const by = f.arrowTargetY;
           const wave = f.explosionTimer / 8;
@@ -3138,7 +3228,7 @@ export function useGameLoop() {
         ctx.fillStyle = isTank ? '#4488ff' : isRC ? '#ff6600' : '#ffdd00';
         ctx.font = 'bold 36px MedievalSharp';
         ctx.textAlign = 'center';
-        const finisherText = isTank ? 'MASH J TO DESTROY!' : isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!';
+        const finisherText = isTank ? 'MASH J — EMPTY THE MAG!' : isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!';
         ctx.fillText(finisherText, 0, 0);
         ctx.restore();
         
@@ -3149,7 +3239,7 @@ export function useGameLoop() {
         
         ctx.fillStyle = '#000000aa';
         ctx.fillRect(meterX - 2, meterY - 2, meterW + 4, meterH + 4);
-        ctx.fillStyle = isRC ? '#001100' : '#220000';
+        ctx.fillStyle = isRC ? '#001100' : isTank ? '#001133' : '#220000';
         ctx.fillRect(meterX, meterY, meterW, meterH);
         
         const fillW = meterW * (f.meter / 100);
@@ -3158,6 +3248,10 @@ export function useGameLoop() {
           meterGrad.addColorStop(0, '#ff4400');
           meterGrad.addColorStop(0.5, '#ff6600');
           meterGrad.addColorStop(1, '#ff8800');
+        } else if (isTank) {
+          meterGrad.addColorStop(0, '#1144bb');
+          meterGrad.addColorStop(0.5, '#2266ee');
+          meterGrad.addColorStop(1, '#44aaff');
         } else {
           meterGrad.addColorStop(0, '#ff4400');
           meterGrad.addColorStop(0.5, '#ffaa00');
@@ -3167,15 +3261,15 @@ export function useGameLoop() {
         ctx.fillRect(meterX, meterY, fillW, meterH);
         
         if (f.meter > 50) {
-          ctx.shadowColor = isRC ? '#ff6600' : '#ffaa00';
+          ctx.shadowColor = isRC ? '#ff6600' : isTank ? '#44aaff' : '#ffaa00';
           ctx.shadowBlur = f.meter / 5;
-          ctx.strokeStyle = isRC ? '#ff8800' : '#ffdd00';
+          ctx.strokeStyle = isRC ? '#ff8800' : isTank ? '#66bbff' : '#ffdd00';
           ctx.lineWidth = 2;
           ctx.strokeRect(meterX, meterY, meterW, meterH);
           ctx.shadowBlur = 0;
         }
         
-        ctx.strokeStyle = isRC ? '#ff6644' : '#ffaa44';
+        ctx.strokeStyle = isRC ? '#ff6644' : isTank ? '#4488cc' : '#ffaa44';
         ctx.lineWidth = 2;
         ctx.strokeRect(meterX, meterY, meterW, meterH);
         
@@ -3202,19 +3296,45 @@ export function useGameLoop() {
         const isRC = s.level?.boss?.bossType === 'rotten_core';
         const isTank = s.level?.boss?.bossType === 'rotten_tank';
         if (isTank) {
-          // CJ unloads everything — show barrage text
-          ctx.fillStyle = '#4488ff';
-          ctx.globalAlpha = 0.9;
-          ctx.font = 'bold 28px MedievalSharp';
+          // CJ BULLET BARRAGE — cinematic sprint text
+          const pulse = 1 + Math.sin(Date.now() * 0.02) * 0.08;
+          ctx.save();
+          ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 80);
+          ctx.scale(pulse, pulse);
+          ctx.shadowColor = '#ffee44';
+          ctx.shadowBlur = 20;
+          ctx.fillStyle = '#ffee44';
+          ctx.font = 'bold 32px MedievalSharp';
           ctx.textAlign = 'center';
-          ctx.fillText("FULL ASSAULT!", CANVAS_W / 2, CANVAS_H / 2 - 80);
-          ctx.globalAlpha = 1;
-          // Bullet rain effect
-          for (let i = 0; i < 8; i++) {
-            const bx = f.arrowX - camX + (Math.random() - 0.5) * 100;
-            const by = f.arrowY + (Math.random() - 0.5) * 60;
-            ctx.fillStyle = '#ffdd44';
-            ctx.fillRect(bx, by, 3, 8);
+          ctx.fillText('BULLET BARRAGE!', 0, 0);
+          ctx.shadowBlur = 0;
+          ctx.restore();
+          
+          // Draw muzzle flash streaks across screen (decorative)
+          for (let i = 0; i < 4; i++) {
+            const streakY = CANVAS_H * 0.3 + i * 40 + Math.sin(Date.now() * 0.03 + i) * 10;
+            const streakX = ((Date.now() * 0.4 + i * 200) % (CANVAS_W + 200)) - 100;
+            ctx.save();
+            ctx.shadowColor = '#ffee44';
+            ctx.shadowBlur = 8;
+            const streakGrad = ctx.createLinearGradient(streakX - 40, streakY, streakX + 4, streakY);
+            streakGrad.addColorStop(0, 'rgba(255,238,68,0)');
+            streakGrad.addColorStop(0.6, 'rgba(255,238,68,0.7)');
+            streakGrad.addColorStop(1, '#ffffff');
+            ctx.fillStyle = streakGrad;
+            ctx.fillRect(streakX - 40, streakY - 2, 44, 4);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
+          
+          // Shell casings raining down (decorative)
+          for (let i = 0; i < 5; i++) {
+            const cx2 = ((Date.now() * 0.15 + i * 137) % CANVAS_W);
+            const cy2 = ((Date.now() * 0.25 + i * 89) % CANVAS_H);
+            ctx.save();
+            ctx.fillStyle = '#ccaa22';
+            ctx.fillRect(cx2, cy2, 4, 8);
+            ctx.restore();
           }
         } else if (isRC) {
           // Levi devour rush — player is already rendered, show "DEVOUR!" text
@@ -3263,13 +3383,34 @@ export function useGameLoop() {
         }
       } else if (f.arrowPhase === 'impact' || f.arrowPhase === 'exploding') {
         const isRC = s.level?.boss?.bossType === 'rotten_core';
+        const isTank = s.level?.boss?.bossType === 'rotten_tank';
         if (f.arrowPhase === 'impact' && f.explosionTimer < 5) {
-          const flashColor = isRC ? `rgba(68, 255, 34, ${0.8 - f.explosionTimer * 0.15})` : `rgba(255, 255, 255, ${0.8 - f.explosionTimer * 0.15})`;
+          const alpha = 0.8 - f.explosionTimer * 0.15;
+          const flashColor = isRC
+            ? `rgba(68, 255, 34, ${alpha})`
+            : isTank
+            ? `rgba(255, 238, 68, ${alpha})`
+            : `rgba(255, 255, 255, ${alpha})`;
           ctx.fillStyle = flashColor;
           ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         }
         
-        if (f.arrowPhase === 'impact' && !isRC) {
+        // For CJ/tank impact: show "OBLITERATED!" text
+        if (f.arrowPhase === 'impact' && isTank && f.explosionTimer > 5) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, (f.explosionTimer - 5) / 10);
+          ctx.shadowColor = '#ffee44';
+          ctx.shadowBlur = 30;
+          ctx.fillStyle = '#ffee44';
+          ctx.font = 'bold 48px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText('OBLITERATED!', CANVAS_W / 2, CANVAS_H / 2 - 50);
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+        
+        if (f.arrowPhase === 'impact' && !isRC && !isTank) {
           const ax = f.arrowX - camX;
           const ay = f.arrowY;
           ctx.save();
@@ -3292,23 +3433,40 @@ export function useGameLoop() {
         if (f.arrowPhase === 'exploding') {
           const bx = f.arrowTargetX - camX;
           const by = f.arrowTargetY;
-          const progress = f.explosionTimer / 90;
+          const progress = isTank ? f.explosionTimer / 90 : f.explosionTimer / 90;
           const ringColors = isRC
             ? ['#44ff2288', '#88ff4466', '#22aa1144']
+            : isTank
+            ? ['#ffee4488', '#ff880066', '#ff440044']
             : ['#ff440088', '#ffaa0066', '#ffdd0044'];
           
           for (let ring = 0; ring < 3; ring++) {
             const ringProgress = Math.min(1, (progress * 3 - ring * 0.3));
             if (ringProgress <= 0) continue;
             ctx.strokeStyle = ringColors[ring];
-            ctx.lineWidth = 4 - ring;
+            ctx.lineWidth = isTank ? 3 - ring * 0.5 : 4 - ring;
             ctx.beginPath();
-            ctx.arc(bx, by, ringProgress * 200, 0, Math.PI * 2);
+            ctx.arc(bx, by, ringProgress * (isTank ? 220 : 200), 0, Math.PI * 2);
             ctx.stroke();
           }
           
+          if (isTank) {
+            // "OBLITERATED!" lingers during explode phase
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, 0.9 - progress * 0.8);
+            ctx.shadowColor = '#ffee44';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#ffee44';
+            ctx.font = 'bold 48px MedievalSharp';
+            ctx.textAlign = 'center';
+            ctx.fillText('OBLITERATED!', CANVAS_W / 2, CANVAS_H / 2 - 50);
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+            ctx.restore();
+          }
+          
           ctx.globalAlpha = Math.max(0, 1 - progress);
-          ctx.fillStyle = isRC ? '#44ff22' : '#ffdd00';
+          ctx.fillStyle = isRC ? '#44ff22' : isTank ? '#ffee44' : '#ffdd00';
           ctx.beginPath();
           ctx.arc(bx, by, 30 * (1 - progress), 0, Math.PI * 2);
           ctx.fill();
