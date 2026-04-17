@@ -510,6 +510,86 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'narrator', text: 'Air Strike: Press S + Up + J to call in artillery! Rains destruction from above!' },
     ],
   },
+
+  // ═══════════ CHAPTER 11: THE IRON CONVERGENCE ═══════════
+  chapter11_start: {
+    id: 'chapter11_start', title: 'Chapter 11: The Iron Convergence', chapterName: 'The Iron Convergence',
+    lines: [
+      { speaker: 'narrator', text: 'Three paths converge. Three warriors, scarred and battle-hardened, stand together for the first time.' },
+      { speaker: 'zachery', text: 'Thought you two were dead.' },
+      { speaker: 'levi', text: '*low rumble* I don\'t die easy.' },
+      { speaker: 'cj', text: 'Been fighting solo for too long. Feels good to have backup.' },
+      { speaker: 'narrator', text: 'The ground trembles beneath them. Something enormous stirs below.' },
+      { speaker: 'zachery', text: 'That\'s not an earthquake.' },
+      { speaker: 'narrator', text: 'Press Q to cycle between heroes! Other heroes follow as AI companions!' },
+    ],
+  },
+
+  chapter11_mid: {
+    id: 'chapter11_mid', title: 'The Iron Convergence', chapterName: 'The Iron Convergence',
+    lines: [
+      { speaker: 'narrator', text: 'The machines have grown desperate. Their last weapon stirs beneath the earth.' },
+      { speaker: 'cj', text: 'I\'ve seen weapon schematics for something they called "The Iron Maw."' },
+      { speaker: 'levi', text: 'What is it?' },
+      { speaker: 'cj', text: 'A mechanical worm the size of a freight train. Built to consume entire battalions.' },
+      { speaker: 'zachery', text: 'Then we end it here.' },
+    ],
+  },
+
+  chapter11_late: {
+    id: 'chapter11_late', title: 'The Iron Convergence', chapterName: 'The Iron Convergence',
+    lines: [
+      { speaker: 'narrator', text: 'The tunnels shake. Massive burrow trails scar the earth around them.' },
+      { speaker: 'levi', text: 'It\'s circling us.' },
+      { speaker: 'zachery', text: 'Good. That means it\'s scared.' },
+      { speaker: 'cj', text: 'Or it\'s hungry. Either way — we don\'t let it get a taste of us.' },
+      { speaker: 'narrator', text: 'Watch out for the suck attack — if it catches you, MASH J to escape!' },
+    ],
+  },
+
+  mech_worm_intro: {
+    id: 'mech_worm_intro', title: 'THE IRON MAW', chapterName: 'The Iron Maw — Boss Battle',
+    lines: [
+      { speaker: 'narrator', text: 'The ground erupts. From the wreckage rises the Iron Maw — The final weapon of the machine empire.' },
+      { speaker: 'narrator', text: 'Hundreds of armored segments. Acid glands. A maw that devours armies whole.' },
+      { speaker: 'levi', text: '...*smiles slowly*... My turn.' },
+      { speaker: 'cj', text: 'All three of us. Together.' },
+      { speaker: 'zachery', text: 'FOR EVERYTHING WE\'VE LOST.' },
+    ],
+  },
+
+  worm_phase2: {
+    id: 'worm_phase2', title: 'The Iron Maw — Phase 2', chapterName: 'The Hunger',
+    lines: [
+      { speaker: 'narrator', text: 'The Iron Maw shudders — its outer armor plates crack and fall away, revealing the pulsing mechanisms beneath.' },
+      { speaker: 'cj', text: 'Armor\'s breaking down! Keep hitting it!' },
+      { speaker: 'narrator', text: 'SUCK ATTACK ACTIVE! If captured — MASH J to break free!' },
+    ],
+  },
+
+  worm_phase3: {
+    id: 'worm_phase3', title: 'The Iron Maw — Phase 3', chapterName: 'Full Consumption',
+    lines: [
+      { speaker: 'narrator', text: 'Critically damaged, the Iron Maw unleashes everything. Its maw opens wide, consuming the very air around it.' },
+      { speaker: 'levi', text: 'FINAL STAND! I CAN FEEL ITS CORE!' },
+      { speaker: 'zachery', text: 'Don\'t let up! END IT!' },
+    ],
+  },
+
+  true_ending: {
+    id: 'true_ending', title: 'THE END', chapterName: 'Epilogue',
+    lines: [
+      { speaker: 'narrator', text: 'With a final, earth-shaking shriek, the Iron Maw collapses. Its core goes dark.' },
+      { speaker: 'narrator', text: 'The machine empire\'s last weapon — destroyed by the three heroes it was built to consume.' },
+      { speaker: 'cj', text: 'It\'s over.' },
+      { speaker: 'levi', text: '...*quietly*... For now.' },
+      { speaker: 'zachery', text: 'No. It\'s over. We won.' },
+      { speaker: 'narrator', text: 'The forests begin to heal. The machines fall silent. The world, scarred and tired, breathes again.' },
+      { speaker: 'narrator', text: 'Three warriors stand together in the ruins — not as soldiers, but as survivors.' },
+      { speaker: 'narrator', text: 'They had saved the world. And that, finally, was enough.' },
+      { speaker: 'narrator', text: '— THE END —' },
+    ],
+  },
 };
 
 // Map of which cutscene plays before each level
@@ -532,6 +612,10 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   16: ['chapter9_start'],
   17: ['chapter9_mid'],
   18: ['rotten_tank_intro'],
+  19: ['chapter11_start'],
+  20: ['chapter11_mid'],
+  21: ['chapter11_late'],
+  22: ['mech_worm_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up

@@ -172,9 +172,25 @@ export interface Boss extends Entity {
   isAlive: boolean;
   phase: number;
   attackCooldown: number;
-  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn' | 'cannon' | 'missiles' | 'machinegun';
+  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn' | 'cannon' | 'missiles' | 'machinegun' | 'suck';
   direction: number;
-  bossType?: 'colossus' | 'rotten_core' | 'rotten_tank';
+  bossType?: 'colossus' | 'rotten_core' | 'rotten_tank' | 'mech_worm';
+  suckTimer?: number;
+}
+
+export interface Companion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  velocityY: number;
+  onGround: boolean;
+  facingRight: boolean;
+  health: number;
+  maxHealth: number;
+  heroType: 'zachery' | 'levi' | 'cj';
+  attackTimer: number;
+  invincibleTimer: number;
 }
 
 export interface Projectile extends Entity {

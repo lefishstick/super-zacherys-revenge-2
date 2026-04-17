@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES, CJAbility, CJ_ABILITIES } from './types';
+import { GameState, Player, Enemy, Boss, Projectile, Particle, Platform, Level, WeaponType, WEAPONS, HealthPickup, LeviAbility, LEVI_ABILITIES, CJAbility, CJ_ABILITIES, Companion } from './types';
 import { createLevel, TOTAL_LEVELS } from './levels';
 
 import onionImg from '@/assets/OnionEnemy.png';
@@ -72,6 +72,18 @@ export function useGameLoop() {
     // CJ special selector: 0=grenade, 1=flashbang, 2=airstrike
     cjSpecialIndex: 0,
     eWasUpCycle: true,
+    // Chapter 11: Companion AI heroes
+    companions: [] as Companion[],
+    // Chapter 11: Q key hero cycling
+    qWasUp: true,
+    heroOrder: ['zachery', 'levi', 'cj'] as ('zachery' | 'levi' | 'cj')[],
+    activeHeroIndex: 2, // which hero the player controls (starts as CJ after ch10)
+    // Chapter 11: Mech-worm suck mechanic
+    suckState: {
+      active: false,
+      meter: 0,
+      jWasUp: true,
+    },
   });
 
   const loadImages = useCallback(() => {
@@ -134,6 +146,36 @@ export function useGameLoop() {
       ammo: s.player?.ammo ?? 30,
       maxAmmo: isCJ ? 30 : 0,
     };
+    
+    // Chapter 11+: Initialize AI companion heroes
+    if (level.chapter >= 11) {
+      const makeComp = (heroType: 'zachery' | 'levi' | 'cj', xOff: number): Companion => ({
+        x: 50 + xOff, y: level.groundY - 60,
+        width: 40, height: 55,
+        velocityY: 0, onGround: false,
+        facingRight: true,
+        health: heroType === 'levi' ? 20 : heroType === 'cj' ? 15 : 10,
+        maxHealth: heroType === 'levi' ? 20 : heroType === 'cj' ? 15 : 10,
+        heroType,
+        attackTimer: 0,
+        invincibleTimer: 0,
+      });
+      // Build companions as the two heroes NOT currently controlled
+      // After chapter 10 the player is CJ (activeHeroIndex=2 in heroOrder)
+      // heroOrder = ['zachery','levi','cj'], active = 2 → companions = zachery & levi
+      const allHeroes: ('zachery' | 'levi' | 'cj')[] = ['zachery', 'levi', 'cj'];
+      const activeHero = s.heroOrder[s.activeHeroIndex];
+      // Make sure player type matches
+      s.player.isCJ = activeHero === 'cj';
+      s.player.isLevi = activeHero === 'levi';
+      s.companions = allHeroes
+        .filter(h => h !== activeHero)
+        .map((h, i) => makeComp(h, -40 - i * 50));
+      s.suckState.active = false;
+      s.suckState.meter = 0;
+    } else {
+      s.companions = [];
+    }
   }, []);
 
   const resetFinisher = () => {
@@ -456,8 +498,16 @@ export function useGameLoop() {
               setCurrentLevel(nextLevel);
               initLevel(nextLevel);
             }
+          } else if (bType === 'mech_worm') {
+            // Iron Maw destroyed — true ending!
+            window.dispatchEvent(new CustomEvent('play_cutscene', { detail: 'true_ending' }));
+            setTimeout(() => {
+              s.gameState = 'victory';
+              setGameState('victory');
+              setScore(s.score);
+            }, 500);
           } else {
-            // Final boss (Rotten Tank) — victory!
+            // Final boss (Rotten Tank) — victory / next chapter!
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
@@ -482,6 +532,179 @@ export function useGameLoop() {
     const keys = s.keys;
     const weapon = WEAPONS[p.currentWeapon];
 
+    // ─── CHAPTER 11: Q key hero cycling ────────────────────────────────────
+    if (level.chapter >= 11 && s.companions.length > 0 && !s.suckState.active) {
+      const qDown = keys.has('q');
+      if (qDown && s.qWasUp) {
+        s.qWasUp = false;
+        // Cycle to next hero
+        const prevIdx = s.activeHeroIndex;
+        s.activeHeroIndex = (s.activeHeroIndex + 1) % 3;
+        const newHero = s.heroOrder[s.activeHeroIndex];
+        const prevHero = s.heroOrder[prevIdx];
+
+        // Find the companion who is the new hero
+        const newCompIdx = s.companions.findIndex(c => c.heroType === newHero);
+        if (newCompIdx !== -1) {
+          const newComp = s.companions[newCompIdx];
+          // The old player becomes a companion at their current position
+          const oldX = p.x; const oldY = p.y; const oldFacing = p.facingRight;
+          const oldHealth = p.health; const oldMaxHealth = p.maxHealth;
+
+          // Swap player to be the new hero
+          p.x = newComp.x; p.y = newComp.y;
+          p.facingRight = newComp.facingRight;
+          p.health = newComp.health; p.maxHealth = newComp.maxHealth;
+          p.isCJ = newHero === 'cj';
+          p.isLevi = newHero === 'levi';
+          if (p.isCJ) { p.ammo = p.ammo || 30; p.maxAmmo = 30; }
+          else { p.maxAmmo = 0; }
+          p.velocityX = 0; p.velocityY = 0;
+
+          // Replace companion slot with old hero
+          s.companions[newCompIdx] = {
+            x: oldX, y: oldY,
+            width: 40, height: 55,
+            velocityY: 0, onGround: p.onGround,
+            facingRight: oldFacing,
+            health: oldHealth, maxHealth: oldMaxHealth,
+            heroType: prevHero,
+            attackTimer: 0,
+            invincibleTimer: 0,
+          };
+
+          // Spawn swap particles
+          spawnParticles(p.x + 20, p.y + 28, '#ffffff', 10);
+          spawnParticles(p.x + 20, p.y + 28, '#aaddff', 8);
+        }
+      }
+      if (!keys.has('q')) s.qWasUp = true;
+    }
+
+    // ─── CHAPTER 11: Suck escape mechanic ──────────────────────────────────
+    if (s.suckState.active) {
+      const jDown = keys.has('j') || keys.has('z');
+      if (jDown && s.suckState.jWasUp) {
+        s.suckState.jWasUp = false;
+        s.suckState.meter = Math.min(100, s.suckState.meter + 5);
+        // Small flash on mash
+        spawnParticles(p.x + 20, p.y + 28, '#ffffff', 3);
+      }
+      if (!jDown) s.suckState.jWasUp = true;
+      // Decay slightly
+      s.suckState.meter = Math.max(0, s.suckState.meter - 0.3);
+
+      // Lock player inside the worm maw
+      if (level.boss && level.boss.isAlive) {
+        const b = level.boss;
+        p.x = b.x + b.width / 2 - p.width / 2;
+        p.y = b.y + 20;
+        p.velocityX = 0; p.velocityY = 0;
+        p.facingRight = false;
+      }
+
+      // Escape when meter full
+      if (s.suckState.meter >= 100) {
+        s.suckState.active = false;
+        s.suckState.meter = 0;
+        // Damage the boss
+        if (level.boss) {
+          level.boss.health -= 12;
+          if (level.boss.health < 0) level.boss.health = 0;
+        }
+        spawnParticles(p.x + 20, p.y + 28, '#ffee44', 20);
+        spawnParticles(p.x + 20, p.y + 28, '#ffffff', 15);
+        // Launch player away from boss
+        p.velocityY = -12;
+        if (level.boss) p.velocityX = p.x < level.boss.x ? -6 : 6;
+        p.invincibleTimer = 60;
+      }
+      // While sucked, skip normal player update but still update everything else
+      // (boss, enemies, companions, particles)
+    }
+
+    // ─── CHAPTER 11: Companion AI update ────────────────────────────────────
+    if (level.chapter >= 11 && s.companions.length > 0) {
+      for (const comp of s.companions) {
+        if (comp.invincibleTimer > 0) comp.invincibleTimer--;
+        if (comp.attackTimer > 0) comp.attackTimer--;
+
+        // Gravity
+        if (!comp.onGround) comp.velocityY += GRAVITY;
+        comp.y += comp.velocityY;
+
+        // Ground collision
+        comp.onGround = false;
+        for (const plat of level.platforms) {
+          if (comp.x + comp.width > plat.x && comp.x < plat.x + plat.width &&
+              comp.y + comp.height >= plat.y && comp.y + comp.height <= plat.y + comp.velocityY + 10 &&
+              comp.velocityY >= 0) {
+            comp.y = plat.y - comp.height;
+            comp.velocityY = 0;
+            comp.onGround = true;
+          }
+        }
+
+        // Follow the player (target position: 60-80px behind)
+        const followX = p.x - (comp.heroType === s.companions[0]?.heroType ? 60 : 110);
+        const dx = followX - comp.x;
+        if (Math.abs(dx) > 10) {
+          comp.x += Math.sign(dx) * Math.min(3.5, Math.abs(dx));
+          comp.facingRight = dx > 0;
+        }
+        // Jump if player is higher and companion is on ground
+        if (p.y < comp.y - 80 && comp.onGround) {
+          comp.velocityY = JUMP_FORCE * 0.9;
+          comp.onGround = false;
+        }
+
+        // Auto-attack nearby enemies (once per 50 frames)
+        if (comp.attackTimer <= 0) {
+          for (const e of level.enemies) {
+            if (!e.isAlive) continue;
+            const ex = Math.abs(e.x - comp.x);
+            if (ex < 120) {
+              // Deal damage to nearest enemy
+              e.health -= comp.heroType === 'levi' ? 3 : comp.heroType === 'cj' ? 2 : 2;
+              if (e.health <= 0) {
+                e.health = 0; e.isAlive = false;
+                s.score += 100;
+                spawnParticles(e.x + e.width / 2, e.y + e.height / 2,
+                  comp.heroType === 'levi' ? '#ff6600' : comp.heroType === 'cj' ? '#ffee44' : '#aaff44', 8);
+              }
+              comp.attackTimer = 50;
+              comp.facingRight = e.x > comp.x;
+              break;
+            }
+          }
+          // Also damage the boss if close
+          if (level.boss && level.boss.isAlive && !s.suckState.active) {
+            const bx = Math.abs(level.boss.x + level.boss.width / 2 - comp.x);
+            if (bx < 150) {
+              level.boss.health -= 1;
+              comp.attackTimer = 40;
+              comp.facingRight = level.boss.x > comp.x;
+              spawnParticles(level.boss.x + level.boss.width / 2, level.boss.y + 30,
+                comp.heroType === 'cj' ? '#ffee44' : '#aaff44', 4);
+            }
+          }
+        }
+
+        // Companions take damage from enemies
+        if (comp.invincibleTimer <= 0) {
+          for (const e of level.enemies) {
+            if (!e.isAlive) continue;
+            const ex = Math.abs(e.x - comp.x);
+            if (ex < 60) {
+              comp.health = Math.max(0, comp.health - 1);
+              comp.invincibleTimer = 60;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     // Weapon switching with number keys
     for (let i = 0; i < p.weapons.length; i++) {
       if (keys.has(`${i + 1}`)) {
@@ -490,7 +713,9 @@ export function useGameLoop() {
     }
 
     // Player movement
-    if (keys.has('arrowleft') || keys.has('a')) {
+    if (s.suckState.active) {
+      // Skip movement when sucked
+    } else if (keys.has('arrowleft') || keys.has('a')) {
       p.velocityX = -MOVE_SPEED;
       p.facingRight = false;
     } else if (keys.has('arrowright') || keys.has('d')) {
@@ -1054,8 +1279,146 @@ export function useGameLoop() {
 
       const isRottenCore = b.bossType === 'rotten_core';
       const isRottenTank = b.bossType === 'rotten_tank';
+      const isMechWorm = b.bossType === 'mech_worm';
 
-      if (b.attackCooldown <= 0) {
+      // ─── MECH-WORM BOSS AI ─────────────────────────────────────────────────
+      if (isMechWorm) {
+        // The worm always moves left/right along the ground, reversing at walls
+        const wormSpeed = b.phase === 3 ? 3.5 : b.phase === 2 ? 2.8 : 2.2;
+        if (b.attackType !== 'suck') {
+          b.velocityX = b.direction * wormSpeed;
+          // Reverse at level edges
+          if (b.x <= 50) { b.direction = 1; }
+          if (b.x + b.width >= level.width - 50) { b.direction = -1; }
+          // Track player: prefer to face the player
+          if (p.x < b.x + b.width / 2) b.direction = -1;
+          else b.direction = 1;
+        }
+
+        if (b.attackCooldown <= 0 && !s.suckState.active) {
+          const rng = Math.random();
+          const playerDist = Math.abs(p.x - (b.x + b.width / 2));
+          if (b.phase >= 2 && rng < 0.3 && playerDist < 300) {
+            // SUCK ATTACK — inhale the player
+            b.attackType = 'suck';
+            b.suckTimer = 0;
+            b.velocityX = 0;
+            b.attackCooldown = 200;
+          } else if (rng < 0.5) {
+            // Charge
+            b.attackType = 'charge';
+            b.velocityX = b.direction * (b.phase === 3 ? 9 : b.phase === 2 ? 7 : 5.5);
+            b.attackCooldown = b.phase >= 3 ? 60 : 80;
+          } else {
+            // Spit acid bolts
+            b.attackType = 'shoot';
+            const numBolts = b.phase === 3 ? 5 : b.phase === 2 ? 3 : 2;
+            for (let i = 0; i < numBolts; i++) {
+              const angle = Math.atan2(p.y - (b.y + 40), p.x - (b.x + b.width / 2)) + (i - (numBolts - 1) / 2) * 0.25;
+              s.projectiles.push({
+                x: b.x + (b.direction < 0 ? 30 : b.width - 30), y: b.y + 40,
+                width: 14, height: 14,
+                velocityX: Math.cos(angle) * 8, velocityY: Math.sin(angle) * 8,
+                isPlayerProjectile: false, damage: 2, lifetime: 80,
+              });
+            }
+            spawnParticles(b.x + b.width / 2, b.y + 40, '#88ff44', 10);
+            b.attackCooldown = b.phase >= 3 ? 45 : b.phase >= 2 ? 55 : 70;
+          }
+        }
+
+        // Suck attack: ramp up the pull
+        if (b.attackType === 'suck') {
+          if (b.suckTimer === undefined) b.suckTimer = 0;
+          b.suckTimer!++;
+          spawnParticles(b.x + (b.direction < 0 ? 20 : b.width - 20), b.y + 40,
+            '#44ff88', 2);
+          // After warning frames, pull player in
+          if (b.suckTimer! > 40 && !s.suckState.active) {
+            const mouthX = b.x + (b.direction < 0 ? 0 : b.width);
+            const playerDist2 = Math.abs(p.x - mouthX);
+            if (playerDist2 < 280) {
+              // Pull force toward mouth
+              p.velocityX += (mouthX - p.x) * 0.04;
+              // Capture player if very close
+              if (playerDist2 < 60) {
+                s.suckState.active = true;
+                s.suckState.meter = 0;
+                s.suckState.jWasUp = true;
+                b.attackType = 'idle';
+                b.attackCooldown = 150;
+              }
+            }
+          }
+          if (b.suckTimer! > 120) {
+            b.attackType = 'idle';
+            b.attackCooldown = 80;
+          }
+        }
+
+        // Worm phase transitions
+        const phaseCutscenes = { 2: 'worm_phase2', 3: 'worm_phase3' };
+        if (b.health < b.maxHealth * 0.3 && b.phase < 3) {
+          b.phase = 3;
+          if (!s.bossPhaseTriggered[3]) {
+            s.bossPhaseTriggered[3] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseCutscenes[3] }));
+          }
+        } else if (b.health < b.maxHealth * 0.6 && b.phase < 2) {
+          b.phase = 2;
+          if (!s.bossPhaseTriggered[2]) {
+            s.bossPhaseTriggered[2] = true;
+            window.dispatchEvent(new CustomEvent('boss_phase_cutscene', { detail: phaseCutscenes[2] }));
+          }
+        }
+
+        // Projectile hits worm
+        for (const proj of s.projectiles) {
+          if (!proj.isPlayerProjectile) continue;
+          if (proj.x > b.x && proj.x < b.x + b.width && proj.y > b.y && proj.y < b.y + b.height) {
+            b.health -= proj.damage;
+            proj.lifetime = 0;
+            spawnParticles(proj.x, proj.y, '#44ff88', 8);
+            if (b.health <= 0) { b.health = 0; startFinisher(); }
+          }
+        }
+
+        // Melee attack from player hits worm
+        if (!p.isLevi && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+          const atkSide = p.facingRight ? p.x + p.width : p.x - weapon.range;
+          const atkW = weapon.range;
+          if (atkSide < b.x + b.width && atkSide + atkW > b.x &&
+              p.y < b.y + b.height && p.y + p.height > b.y) {
+            b.health -= weapon.damage;
+            spawnParticles(b.x + b.width / 2, b.y + 40, weapon.color, 8);
+            if (b.health <= 0) { b.health = 0; startFinisher(); }
+          }
+        }
+        // Levi devour on worm
+        if (p.isLevi && p.isAttacking && p.attackTimer > 15) {
+          const hasMC = p.leviAbilities.includes('mega_chomp');
+          const dx = (b.x + b.width / 2) - (p.x + p.width / 2);
+          const dy = (b.y + b.height / 2) - (p.y + p.height / 2);
+          if (Math.sqrt(dx * dx + dy * dy) < (hasMC ? 140 : 100)) {
+            b.health -= hasMC ? 6 : 4;
+            spawnParticles(b.x + b.width / 2, b.y + 40, '#ff6600', 12);
+            if (b.health <= 0) { b.health = 0; startFinisher(); }
+          }
+        }
+
+        // Boss touches player — damage unless sucking (suck handles its own)
+        if (p.invincibleTimer <= 0 && !s.suckState.active) {
+          if (p.x < b.x + b.width && p.x + p.width > b.x &&
+              p.y < b.y + b.height && p.y + p.height > b.y) {
+            p.health -= 3;
+            p.invincibleTimer = 90;
+            p.velocityX = (p.x < b.x ? -1 : 1) * 10;
+            p.velocityY = -8;
+            spawnParticles(p.x + p.width / 2, p.y + p.height / 2, '#ff0000', 15);
+            if (p.health <= 0) { s.gameState = 'gameover'; setGameState('gameover'); }
+          }
+        }
+      } else if (b.attackCooldown <= 0) {
         if (isRottenTank) {
           // ROTTEN TANK BOSS AI
           const rng = Math.random();
@@ -2060,6 +2423,53 @@ export function useGameLoop() {
         const gx = i * 180 - (camX * 0.1) % 360;
         ctx.fillRect(gx, 0, 10, CANVAS_H - 100);
       }
+    } else if (chapter === 11) {
+      // THE IRON CONVERGENCE — Ruined industrial wasteland, worm burrow trails
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      skyGrad.addColorStop(0, '#0a1a0a'); skyGrad.addColorStop(0.4, '#0f2a0f');
+      skyGrad.addColorStop(1, '#061006');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      // Toxic green pulse across sky
+      const toxicPulse = Math.sin(t * 0.003) * 0.5 + 0.5;
+      ctx.globalAlpha = toxicPulse * 0.04;
+      ctx.fillStyle = '#44ff44'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+      // Background ruined pillars
+      ctx.fillStyle = '#1a2a1a';
+      for (let i = 0; i < 8; i++) {
+        const px2 = (i * 280 - camX * 0.2) % (CANVAS_W + 280) - 100;
+        ctx.fillRect(px2, CANVAS_H * 0.3, 40, CANVAS_H * 0.7);
+      }
+      // Worm burrow trails in the ground
+      ctx.strokeStyle = '#224422';
+      ctx.lineWidth = 8;
+      for (let i = 0; i < 5; i++) {
+        const trailX = ((i * 500 - camX * 0.3) % (CANVAS_W + 500)) - 200;
+        ctx.beginPath();
+        ctx.moveTo(trailX, CANVAS_H - 100);
+        ctx.bezierCurveTo(trailX + 100, CANVAS_H - 140, trailX + 200, CANVAS_H - 80, trailX + 400, CANVAS_H - 120);
+        ctx.stroke();
+      }
+      // Mid-distance broken metal debris
+      ctx.fillStyle = '#1a3a1a';
+      for (let i = 0; i < 10; i++) {
+        const dx = ((i * 200 + 50 - camX * 0.5) % (CANVAS_W + 200)) - 50;
+        const dh = 30 + (i * 17) % 60;
+        ctx.fillRect(dx, CANVAS_H - 100 - dh, 20, dh);
+      }
+      // Glowing circuit vines
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 6; i++) {
+        const vx = ((i * 250 - camX * 0.7) % (CANVAS_W + 250)) - 50;
+        ctx.beginPath();
+        ctx.moveTo(vx, CANVAS_H - 100);
+        ctx.lineTo(vx + 30, CANVAS_H - 200);
+        ctx.lineTo(vx + 10, CANVAS_H - 300);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
   };
 
@@ -2591,55 +3001,222 @@ export function useGameLoop() {
       const bx = b.x - camX;
       const isRC = b.bossType === 'rotten_core';
       const isRT = b.bossType === 'rotten_tank';
-      const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : s.images.boss;
-      
-      if (bossImage?.complete) {
-        ctx.save();
-        if (isRT) {
-          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00';
-          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.004) * 10;
-        } else if (isRC) {
-          // Rotten Core: green toxic glow based on phase
-          ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
-          ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
-        } else {
-          ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
-          ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
-        }
-        if (b.direction > 0) {
-          ctx.translate(bx + b.width, b.y);
-          ctx.scale(-1, 1);
-          ctx.drawImage(bossImage, 0, 0, b.width, b.height);
-        } else {
-          ctx.drawImage(bossImage, bx, b.y, b.width, b.height);
-        }
-        ctx.shadowBlur = 0;
-        ctx.restore();
-      }
+      const isWorm = b.bossType === 'mech_worm';
 
-      // Boss health bar
-      const bossBarColor = isRT
-        ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00')
-        : isRC
-        ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11')
-        : (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900');
-      ctx.fillStyle = '#330000';
-      ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
-      ctx.fillStyle = bossBarColor;
-      ctx.fillRect(CANVAS_W / 2 - 150, 20, 300 * (b.health / b.maxHealth), 16);
-      ctx.strokeStyle = isRT ? '#ff6600' : isRC ? '#44ff22' : '#ffaa00';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(CANVAS_W / 2 - 150, 20, 300, 16);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '12px MedievalSharp';
-      ctx.textAlign = 'center';
-      ctx.fillText(isRT ? 'THE ROTTEN TANK' : isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
-      
-      if (isRC || isRT) {
-        const phaseNames = isRT ? ['Armored Assault', 'Missile Barrage', 'Full Power'] : ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
-        ctx.fillStyle = bossBarColor;
+      if (isWorm) {
+        // MECH-WORM: draw as a segmented mechanical serpent
+        ctx.save();
+        const t = Date.now();
+        const phaseGlow = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff88' : '#22cc44';
+        ctx.shadowColor = phaseGlow;
+        ctx.shadowBlur = 20 + Math.sin(t * 0.006) * 12;
+
+        // Body segments (5 segments from tail to head)
+        const segW = b.width / 5;
+        const segH = b.height;
+        const mouthSide = b.direction < 0 ? 0 : b.width - segW;
+
+        for (let seg = 4; seg >= 0; seg--) {
+          const segX = bx + (b.direction < 0 ? seg : 4 - seg) * segW;
+          const wobble = Math.sin(t * 0.005 + seg * 0.8) * 4;
+          const isHead = seg === 0;
+          const segColor = isHead ? '#2a5a2a' : (seg % 2 === 0 ? '#1a3a1a' : '#223322');
+          
+          ctx.fillStyle = segColor;
+          ctx.beginPath();
+          ctx.roundRect(segX, b.y + wobble, segW - 4, segH, isHead ? 8 : 4);
+          ctx.fill();
+
+          // Metal bands / armor rings
+          ctx.fillStyle = '#446644';
+          ctx.fillRect(segX + 2, b.y + wobble + 8, segW - 8, 6);
+          ctx.fillRect(segX + 2, b.y + wobble + segH - 16, segW - 8, 6);
+
+          // Circuit lines
+          ctx.strokeStyle = phaseGlow;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(segX + 4, b.y + wobble + segH / 2 - 8);
+          ctx.lineTo(segX + segW - 8, b.y + wobble + segH / 2 - 8);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        // Head: huge maw
+        const headX = bx + mouthSide;
+        const wobbleHead = Math.sin(t * 0.005) * 4;
+        ctx.fillStyle = '#1a4a1a';
+        ctx.beginPath();
+        ctx.roundRect(headX, b.y + wobbleHead - 6, segW + 10, segH + 12, 10);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Eyes (2 glowing eyes on head)
+        const eyeY = b.y + wobbleHead + 18;
+        const eyeX1 = headX + (b.direction < 0 ? 10 : 6);
+        const eyeX2 = headX + (b.direction < 0 ? 20 : 16);
+        ctx.fillStyle = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
+        ctx.shadowColor = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
+        ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(eyeX1, eyeY, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(eyeX2, eyeY + 12, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Maw / mouth
+        const mawOpen = b.attackType === 'suck' ? 1.0 : 0.4;
+        const mawX = headX + (b.direction < 0 ? -14 : segW);
+        ctx.fillStyle = b.attackType === 'suck' ? '#ff440044' : '#00220088';
+        ctx.fillStyle = '#111111';
+        ctx.beginPath();
+        ctx.ellipse(mawX + (b.direction < 0 ? 7 : -5), b.y + wobbleHead + segH / 2,
+          16, segH / 2 * mawOpen, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Teeth
+        if (b.attackType === 'suck') {
+          ctx.fillStyle = '#44ff88';
+          ctx.shadowColor = '#44ff88';
+          ctx.shadowBlur = 15;
+          for (let t2 = 0; t2 < 4; t2++) {
+            const ty = b.y + wobbleHead + 20 + t2 * 18;
+            ctx.fillRect(mawX + (b.direction < 0 ? 2 : -12), ty, 10, 8);
+          }
+          ctx.shadowBlur = 0;
+        }
+
+        // Suck vortex effect
+        if (b.attackType === 'suck' && b.suckTimer !== undefined && b.suckTimer > 20) {
+          ctx.globalAlpha = Math.min(0.7, (b.suckTimer! - 20) / 60);
+          const vortexX = mawX + (b.direction < 0 ? 0 : 0);
+          const vortexY = b.y + wobbleHead + segH / 2;
+          const vortGrad = ctx.createRadialGradient(vortexX, vortexY, 5, vortexX, vortexY, 140);
+          vortGrad.addColorStop(0, '#44ff8888');
+          vortGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = vortGrad;
+          ctx.beginPath();
+          ctx.arc(vortexX, vortexY, 140, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.restore();
+
+        // Boss health bar
+        const wormBarColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff88' : '#22cc44';
+        ctx.fillStyle = '#001100';
+        ctx.fillRect(CANVAS_W / 2 - 175, 20, 350, 16);
+        ctx.fillStyle = wormBarColor;
+        ctx.fillRect(CANVAS_W / 2 - 175, 20, 350 * (b.health / b.maxHealth), 16);
+        ctx.strokeStyle = wormBarColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(CANVAS_W / 2 - 175, 20, 350, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px MedievalSharp';
+        ctx.textAlign = 'center';
+        ctx.fillText('THE IRON MAW', CANVAS_W / 2, 52);
+        const wormPhaseNames = ['Burrowing', 'The Hunger', 'Full Consumption'];
+        ctx.fillStyle = wormBarColor;
         ctx.font = '10px MedievalSharp';
-        ctx.fillText(`Phase ${b.phase}: ${phaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
+        ctx.fillText(`Phase ${b.phase}: ${wormPhaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
+      } else {
+        const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : s.images.boss;
+        
+        if (bossImage?.complete) {
+          ctx.save();
+          if (isRT) {
+            ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00';
+            ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.004) * 10;
+          } else if (isRC) {
+            ctx.shadowColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11';
+            ctx.shadowBlur = 25 + Math.sin(Date.now() * 0.003) * 15;
+          } else {
+            ctx.shadowColor = b.phase >= 3 ? '#ff0000' : b.phase >= 2 ? '#ff6600' : '#ff9900';
+            ctx.shadowBlur = 20 + Math.sin(Date.now() * 0.005) * 10;
+          }
+          if (b.direction > 0) {
+            ctx.translate(bx + b.width, b.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(bossImage, 0, 0, b.width, b.height);
+          } else {
+            ctx.drawImage(bossImage, bx, b.y, b.width, b.height);
+          }
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        }
+
+        // Boss health bar
+        const bossBarColor = isRT
+          ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ffaa00')
+          : isRC
+          ? (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff22' : '#22aa11')
+          : (b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#ff6600' : '#ff9900');
+        ctx.fillStyle = '#330000';
+        ctx.fillRect(CANVAS_W / 2 - 150, 20, 300, 16);
+        ctx.fillStyle = bossBarColor;
+        ctx.fillRect(CANVAS_W / 2 - 150, 20, 300 * (b.health / b.maxHealth), 16);
+        ctx.strokeStyle = isRT ? '#ff6600' : isRC ? '#44ff22' : '#ffaa00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(CANVAS_W / 2 - 150, 20, 300, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px MedievalSharp';
+        ctx.textAlign = 'center';
+        ctx.fillText(isRT ? 'THE ROTTEN TANK' : isRC ? 'THE ROTTEN CORE' : 'THE ROTTEN COLOSSUS', CANVAS_W / 2, 52);
+        
+        if (isRC || isRT) {
+          const phaseNames = isRT ? ['Armored Assault', 'Missile Barrage', 'Full Power'] : ['The Ancient Tree', 'The Corruption', 'Exposed Core'];
+          ctx.fillStyle = bossBarColor;
+          ctx.font = '10px MedievalSharp';
+          ctx.fillText(`Phase ${b.phase}: ${phaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
+        }
+      }
+    }
+
+    // Draw companions (Chapter 11 — the inactive heroes follow as AI)
+    if (s.companions.length > 0) {
+      for (const comp of s.companions) {
+        if (!comp.alive) continue;
+        const compX = comp.x - camX;
+        const compImage = comp.heroId === 'cj' ? s.images.cj
+          : comp.heroId === 'levi' ? s.images.levi : s.images.player;
+        if (compImage?.complete) {
+          ctx.save();
+          // Flicker when hit
+          if (comp.invincibleTimer > 0 && Math.floor(comp.invincibleTimer / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.4;
+          }
+          // Hero-specific glow
+          if (comp.heroId === 'cj') {
+            ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 10;
+          } else if (comp.heroId === 'levi') {
+            ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10;
+          } else {
+            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8;
+          }
+          // Slightly transparent so they're clearly AI companions
+          ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.8;
+          if (!comp.facingRight) {
+            ctx.translate(compX + comp.width, comp.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(compImage, 0, 0, comp.width, comp.height);
+          } else {
+            ctx.drawImage(compImage, compX, comp.y, comp.width, comp.height);
+          }
+          ctx.shadowBlur = 0;
+          ctx.restore();
+          // Small companion HP bar under their feet
+          const barW = comp.width;
+          const barH = 4;
+          const barY = comp.y + comp.height + 3;
+          ctx.fillStyle = '#330000';
+          ctx.fillRect(compX, barY, barW, barH);
+          ctx.fillStyle = comp.heroId === 'cj' ? '#4488ff' : comp.heroId === 'levi' ? '#ff6600' : '#44ff88';
+          ctx.fillRect(compX, barY, barW * (comp.health / comp.maxHealth), barH);
+          // Label above their head
+          ctx.fillStyle = '#ffffffcc';
+          ctx.font = 'bold 9px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText(comp.heroId === 'cj' ? 'CJ' : comp.heroId === 'levi' ? 'LEVI' : 'ZACH', compX + comp.width / 2, comp.y - 5);
+        }
       }
     }
 
@@ -3125,8 +3702,29 @@ export function useGameLoop() {
       16: '9-1: Forward Base',
       17: '9-2: War Zone',
       18: '10-1: The Rotten Tank',
+      19: '11-1: The Iron Convergence',
+      20: '11-2: Worm Tunnels',
+      21: '11-3: The Maw Awakens',
+      22: '11-4: The Iron Maw',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
+
+    // Chapter 11: Q-key hero swap hint
+    if (s.level?.chapter === 11 && s.companions.length > 0) {
+      const heroColors: Record<string, string> = { zachery: '#44ff88', levi: '#ff6600', cj: '#4488ff' };
+      const heroName = s.heroOrder[s.activeHeroIndex];
+      const heroColor = heroColors[heroName] || '#ffffff';
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(CANVAS_W / 2 - 120, CANVAS_H - 40, 240, 28);
+      ctx.strokeStyle = heroColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(CANVAS_W / 2 - 120, CANVAS_H - 40, 240, 28);
+      ctx.fillStyle = heroColor;
+      ctx.font = 'bold 11px MedievalSharp';
+      ctx.textAlign = 'center';
+      const displayName = heroName === 'zachery' ? 'ZACHERY' : heroName === 'levi' ? 'LEVI' : 'CJ';
+      ctx.fillText(`[Q] SWITCH HERO  |  ACTIVE: ${displayName}`, CANVAS_W / 2, CANVAS_H - 21);
+    }
 
     // Weapon HUD (bottom left)
     if (p.isCJ) {
@@ -3212,6 +3810,52 @@ export function useGameLoop() {
       }
     }
 
+    // === SUCK ESCAPE OVERLAY ===
+    if (s.suckState.active) {
+      // Vignette pulse — swallowed by the worm
+      const suckPulse = Math.sin(Date.now() * 0.012) * 0.5 + 0.5;
+      ctx.fillStyle = `rgba(0, 30, 0, ${0.55 + suckPulse * 0.2})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // "MASH J TO ESCAPE!" text
+      ctx.save();
+      const suckScale = 1 + Math.sin(Date.now() * 0.015) * 0.08;
+      ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 60);
+      ctx.scale(suckScale, suckScale);
+      ctx.fillStyle = '#44ff88';
+      ctx.shadowColor = '#44ff88';
+      ctx.shadowBlur = 20;
+      ctx.font = 'bold 30px MedievalSharp';
+      ctx.textAlign = 'center';
+      ctx.fillText('MASH J TO ESCAPE!', 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Escape meter
+      const mW = 360;
+      const mH = 28;
+      const mX = (CANVAS_W - mW) / 2;
+      const mY = CANVAS_H / 2 - 20;
+      ctx.fillStyle = '#001100aa';
+      ctx.fillRect(mX - 2, mY - 2, mW + 4, mH + 4);
+      ctx.fillStyle = '#001a00';
+      ctx.fillRect(mX, mY, mW, mH);
+      const escapePct = s.suckState.meter / 100;
+      const escGrad = ctx.createLinearGradient(mX, mY, mX + mW, mY);
+      escGrad.addColorStop(0, '#006600');
+      escGrad.addColorStop(0.5, '#22ff44');
+      escGrad.addColorStop(1, '#88ffaa');
+      ctx.fillStyle = escGrad;
+      ctx.fillRect(mX, mY, mW * escapePct, mH);
+      ctx.strokeStyle = '#44ff88';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(mX, mY, mW, mH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px MedievalSharp';
+      ctx.textAlign = 'center';
+      ctx.fillText(`ESCAPE POWER: ${Math.floor(s.suckState.meter)}%`, CANVAS_W / 2, mY + mH + 20);
+    }
+
     // === FINISHER RENDERING ===
     if (f.active) {
       // Darken screen edges
@@ -3225,10 +3869,11 @@ export function useGameLoop() {
         ctx.save();
         ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 60);
         ctx.scale(pulseScale, pulseScale);
-        ctx.fillStyle = isTank ? '#4488ff' : isRC ? '#ff6600' : '#ffdd00';
+        const isWormBoss = s.level?.boss?.bossType === 'mech_worm';
+        ctx.fillStyle = isTank ? '#4488ff' : isRC ? '#ff6600' : isWormBoss ? '#44ff88' : '#ffdd00';
         ctx.font = 'bold 36px MedievalSharp';
         ctx.textAlign = 'center';
-        const finisherText = isTank ? 'MASH J — EMPTY THE MAG!' : isRC ? 'MASH J TO DEVOUR!' : 'MASH J TO FINISH!';
+        const finisherText = isTank ? 'MASH J — EMPTY THE MAG!' : isRC ? 'MASH J TO DEVOUR!' : isWormBoss ? 'MASH J — TRIPLE STRIKE!' : 'MASH J TO FINISH!';
         ctx.fillText(finisherText, 0, 0);
         ctx.restore();
         
@@ -3237,9 +3882,10 @@ export function useGameLoop() {
         const meterX = (CANVAS_W - meterW) / 2;
         const meterY = CANVAS_H / 2 - 20;
         
+        const isWormFinisher = s.level?.boss?.bossType === 'mech_worm';
         ctx.fillStyle = '#000000aa';
         ctx.fillRect(meterX - 2, meterY - 2, meterW + 4, meterH + 4);
-        ctx.fillStyle = isRC ? '#001100' : isTank ? '#001133' : '#220000';
+        ctx.fillStyle = isRC ? '#001100' : isTank ? '#001133' : isWormFinisher ? '#001a00' : '#220000';
         ctx.fillRect(meterX, meterY, meterW, meterH);
         
         const fillW = meterW * (f.meter / 100);
@@ -3252,6 +3898,11 @@ export function useGameLoop() {
           meterGrad.addColorStop(0, '#1144bb');
           meterGrad.addColorStop(0.5, '#2266ee');
           meterGrad.addColorStop(1, '#44aaff');
+        } else if (isWormFinisher) {
+          meterGrad.addColorStop(0, '#006600');
+          meterGrad.addColorStop(0.33, '#44ff88');
+          meterGrad.addColorStop(0.66, '#4488ff');
+          meterGrad.addColorStop(1, '#ff6600');
         } else {
           meterGrad.addColorStop(0, '#ff4400');
           meterGrad.addColorStop(0.5, '#ffaa00');
@@ -3261,15 +3912,15 @@ export function useGameLoop() {
         ctx.fillRect(meterX, meterY, fillW, meterH);
         
         if (f.meter > 50) {
-          ctx.shadowColor = isRC ? '#ff6600' : isTank ? '#44aaff' : '#ffaa00';
+          ctx.shadowColor = isRC ? '#ff6600' : isTank ? '#44aaff' : isWormFinisher ? '#44ff88' : '#ffaa00';
           ctx.shadowBlur = f.meter / 5;
-          ctx.strokeStyle = isRC ? '#ff8800' : isTank ? '#66bbff' : '#ffdd00';
+          ctx.strokeStyle = isRC ? '#ff8800' : isTank ? '#66bbff' : isWormFinisher ? '#66ffaa' : '#ffdd00';
           ctx.lineWidth = 2;
           ctx.strokeRect(meterX, meterY, meterW, meterH);
           ctx.shadowBlur = 0;
         }
         
-        ctx.strokeStyle = isRC ? '#ff6644' : isTank ? '#4488cc' : '#ffaa44';
+        ctx.strokeStyle = isRC ? '#ff6644' : isTank ? '#4488cc' : isWormFinisher ? '#44ff88' : '#ffaa44';
         ctx.lineWidth = 2;
         ctx.strokeRect(meterX, meterY, meterW, meterH);
         
@@ -3277,8 +3928,26 @@ export function useGameLoop() {
         ctx.font = 'bold 16px MedievalSharp';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.floor(f.meter)}%`, CANVAS_W / 2, meterY + 22);
-        
-        if (s.level?.boss) {
+
+        // Worm finisher: show all 3 hero icons converging
+        if (isWormFinisher && s.level?.boss) {
+          const b = s.level.boss;
+          const bx = b.x - camX;
+          const t2 = Date.now() * 0.006;
+          const heroLabels = [{ label: 'ZACH', color: '#44ff88' }, { label: 'LEVI', color: '#ff6600' }, { label: 'CJ', color: '#4488ff' }];
+          heroLabels.forEach((h, i) => {
+            const angle = t2 + (Math.PI * 2 / 3) * i;
+            const sx = bx + b.width / 2 + Math.cos(angle) * 60;
+            const sy = b.y - 20 + Math.sin(angle) * 20;
+            ctx.fillStyle = h.color;
+            ctx.shadowColor = h.color;
+            ctx.shadowBlur = 10;
+            ctx.font = 'bold 11px MedievalSharp';
+            ctx.textAlign = 'center';
+            ctx.fillText(h.label, sx, sy);
+            ctx.shadowBlur = 0;
+          });
+        } else if (s.level?.boss) {
           const b = s.level.boss;
           const bx = b.x - camX;
           const t = Date.now() * 0.005;
@@ -3344,6 +4013,51 @@ export function useGameLoop() {
           ctx.textAlign = 'center';
           ctx.fillText("SUPER LEVI DEVOURS!", CANVAS_W / 2, CANVAS_H / 2 - 80);
           ctx.globalAlpha = 1;
+        } else if (s.level?.boss?.bossType === 'mech_worm') {
+          // TRIPLE STRIKE: all three heroes converge on the worm
+          const t3 = Date.now();
+          const heroData = [
+            { color: '#44ff88', label: 'ZACHERY', trail: '#22aa44' },
+            { color: '#ff6600', label: 'LEVI', trail: '#aa3300' },
+            { color: '#4488ff', label: 'CJ', trail: '#2244aa' },
+          ];
+          heroData.forEach((h, i) => {
+            const prog = Math.min(1, (t3 % 600) / 600);
+            const startX = CANVAS_W * (i * 0.33 + 0.1);
+            const endX = f.arrowTargetX - camX;
+            const curX = startX + (endX - startX) * prog;
+            const curY = CANVAS_H / 2 + Math.sin(prog * Math.PI) * -60 + (i - 1) * 30;
+            // Trail
+            ctx.strokeStyle = h.trail;
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(startX, CANVAS_H / 2 + (i - 1) * 30);
+            ctx.lineTo(curX, curY);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            // Hero dot
+            ctx.fillStyle = h.color;
+            ctx.shadowColor = h.color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(curX, curY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          });
+          // "TRIPLE STRIKE!" text
+          const tScale = 1 + Math.sin(t3 * 0.02) * 0.1;
+          ctx.save();
+          ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 80);
+          ctx.scale(tScale, tScale);
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#44ff88';
+          ctx.shadowBlur = 20;
+          ctx.font = 'bold 30px MedievalSharp';
+          ctx.textAlign = 'center';
+          ctx.fillText('TRIPLE STRIKE!', 0, 0);
+          ctx.shadowBlur = 0;
+          ctx.restore();
         } else {
           // Draw the legendary arrow
           const ax = f.arrowX - camX;

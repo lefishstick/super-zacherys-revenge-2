@@ -180,6 +180,20 @@ const GameCanvas = () => {
     return () => window.removeEventListener('boss_phase_cutscene' as any, handler);
   }, [setGameStateTo]);
 
+  // Handle direct cutscene play events (e.g. true_ending after mech_worm)
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      const scene = CUTSCENES[e.detail];
+      if (scene) {
+        setCutsceneQueue([scene]);
+        setShowCutscene(true);
+        setGameStateTo('cutscene');
+      }
+    };
+    window.addEventListener('play_cutscene' as any, handler);
+    return () => window.removeEventListener('play_cutscene' as any, handler);
+  }, [setGameStateTo]);
+
   // Handle weapon pickup cutscenes
   useEffect(() => {
     const handler = (e: CustomEvent<string>) => {

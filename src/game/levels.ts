@@ -55,7 +55,17 @@ const makeAmmoPickup = (x: number, y: number, ammoAmount = 10): AmmoPickup => ({
   x, y, width: 20, height: 20, ammoAmount, collected: false,
 });
 
-export const TOTAL_LEVELS = 18;
+export const TOTAL_LEVELS = 22;
+
+const makeMechWorm = (x: number, y: number): Boss => ({
+  x, y, width: 320, height: 110,
+  velocityX: 0, velocityY: 0,
+  health: 80, maxHealth: 80,
+  isAlive: true, phase: 1,
+  attackCooldown: 100, attackType: 'idle', direction: -1,
+  bossType: 'mech_worm',
+  suckTimer: 0,
+});
 
 type LevelInput = Omit<Level, 'leviAbilityPickups' | 'cjAbilityPickups' | 'ammoPickups'> & {
   leviAbilityPickups?: LeviAbilityPickup[];
@@ -492,7 +502,6 @@ export const createLevel = (levelNum: number): Level => {
       });
 
     case 18:
-    default:
       // Chapter 10: The Rotten Tank — CJ's Final Boss
       return L({
         width: 1500, groundY, isBossLevel: true, chapter: 10,
@@ -508,6 +517,122 @@ export const createLevel = (levelNum: number): Level => {
         weaponPickups: [],
         healthPickups: [makeHealthPickup(200, groundY - 30, 5), makeHealthPickup(600, groundY - 30, 5), makeHealthPickup(1000, groundY - 30, 5)],
         ammoPickups: [makeAmmoPickup(350, groundY - 30, 20), makeAmmoPickup(850, groundY - 30, 20)],
+      });
+
+    // ═══════════ CHAPTER 11: THE IRON CONVERGENCE (Levels 19-22) ═══════════
+    // All three heroes reunite. Q = cycle active hero, AI controls the other two.
+
+    case 19:
+      // Chapter 11: Ruins of the Forward Base — aftermath of CJ's battle
+      return L({
+        width: 3200, groundY, isBossLevel: false, chapter: 11,
+        platforms: [
+          { x: 0, y: groundY, width: 3200, height: 100 },
+          { x: 280, y: 400, width: 200, height: 20 }, { x: 580, y: 340, width: 160, height: 20 },
+          { x: 880, y: 380, width: 180, height: 20 }, { x: 1180, y: 310, width: 200, height: 20 },
+          { x: 1500, y: 370, width: 160, height: 20 }, { x: 1800, y: 290, width: 200, height: 20 },
+          { x: 2100, y: 360, width: 180, height: 20 }, { x: 2400, y: 300, width: 200, height: 20 },
+          { x: 2750, y: 360, width: 160, height: 20 },
+          // Raised walkways — ruined base feel
+          { x: 400, y: 280, width: 120, height: 20 }, { x: 1300, y: 230, width: 130, height: 20 },
+          { x: 2000, y: 220, width: 140, height: 20 }, { x: 2600, y: 240, width: 120, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(500, groundY - 70, 'egg', 5), makeEnemy(780, groundY - 70, 'onion', 5),
+          makeEnemy(1050, groundY - 70, 'egg', 5.5), makeEnemy(1350, groundY - 70, 'onion', 5),
+          makeEnemy(1650, groundY - 70, 'egg', 5.5), makeEnemy(1950, groundY - 70, 'onion', 6),
+          makeEnemy(2200, groundY - 70, 'egg', 5.5), makeEnemy(2500, groundY - 70, 'onion', 6),
+          makeEnemy(2800, groundY - 70, 'egg', 6), makeEnemy(3050, groundY - 70, 'onion', 6),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(500, groundY - 30, 5), makeHealthPickup(1200, groundY - 30, 5), makeHealthPickup(1900, groundY - 30, 5), makeHealthPickup(2700, groundY - 30, 5)],
+        ammoPickups: [makeAmmoPickup(700, groundY - 30, 15), makeAmmoPickup(1500, groundY - 30, 15), makeAmmoPickup(2300, groundY - 30, 15)],
+      });
+
+    case 20:
+      // Chapter 11: The Tunneling Fields — ground shakes as the worm burrows nearby
+      return L({
+        width: 3600, groundY, isBossLevel: false, chapter: 11,
+        platforms: [
+          { x: 0, y: groundY, width: 3600, height: 100 },
+          // Uneven terrain — worm burrowed through here
+          { x: 250, y: 390, width: 220, height: 20 }, { x: 560, y: 330, width: 180, height: 20 },
+          { x: 860, y: 380, width: 160, height: 20 }, { x: 1160, y: 300, width: 200, height: 20 },
+          { x: 1480, y: 360, width: 180, height: 20 }, { x: 1780, y: 280, width: 200, height: 20 },
+          { x: 2080, y: 370, width: 160, height: 20 }, { x: 2380, y: 310, width: 200, height: 20 },
+          { x: 2700, y: 380, width: 160, height: 20 }, { x: 3000, y: 290, width: 200, height: 20 },
+          { x: 3300, y: 360, width: 180, height: 20 },
+          // Elevated debris platforms
+          { x: 700, y: 260, width: 130, height: 20 }, { x: 1600, y: 230, width: 140, height: 20 },
+          { x: 2500, y: 250, width: 130, height: 20 }, { x: 3150, y: 240, width: 120, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(400, groundY - 70, 'onion', 5.5), makeEnemy(700, groundY - 70, 'egg', 6),
+          makeEnemy(1000, groundY - 70, 'onion', 6), makeEnemy(1300, groundY - 70, 'egg', 6),
+          makeEnemy(1600, groundY - 70, 'onion', 6), makeEnemy(1900, groundY - 70, 'egg', 6.5),
+          makeEnemy(2200, groundY - 70, 'onion', 6), makeEnemy(2500, groundY - 70, 'egg', 6.5),
+          makeEnemy(2800, groundY - 70, 'onion', 6.5), makeEnemy(3100, groundY - 70, 'egg', 7),
+          makeEnemy(3400, groundY - 70, 'onion', 6.5),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(400, groundY - 30, 5), makeHealthPickup(1100, groundY - 30, 5), makeHealthPickup(1800, groundY - 30, 5), makeHealthPickup(2600, groundY - 30, 5), makeHealthPickup(3300, groundY - 30, 5)],
+        ammoPickups: [makeAmmoPickup(550, groundY - 30, 15), makeAmmoPickup(1350, groundY - 30, 15), makeAmmoPickup(2100, groundY - 30, 15), makeAmmoPickup(2900, groundY - 30, 15)],
+      });
+
+    case 21:
+      // Chapter 11: The Maw Approaches — worm tears up sections of ground
+      return L({
+        width: 4000, groundY, isBossLevel: false, chapter: 11,
+        platforms: [
+          { x: 0, y: groundY, width: 4000, height: 100 },
+          { x: 200, y: 400, width: 200, height: 20 }, { x: 500, y: 340, width: 160, height: 20 },
+          { x: 800, y: 290, width: 180, height: 20 }, { x: 1100, y: 380, width: 200, height: 20 },
+          { x: 1400, y: 310, width: 160, height: 20 }, { x: 1700, y: 260, width: 200, height: 20 },
+          { x: 2000, y: 380, width: 180, height: 20 }, { x: 2300, y: 300, width: 200, height: 20 },
+          { x: 2600, y: 270, width: 160, height: 20 }, { x: 2900, y: 380, width: 200, height: 20 },
+          { x: 3200, y: 290, width: 180, height: 20 }, { x: 3550, y: 350, width: 200, height: 20 },
+          { x: 3800, y: 380, width: 160, height: 20 },
+          // High platforms for escaping worm attacks
+          { x: 650, y: 210, width: 130, height: 20 }, { x: 1550, y: 200, width: 140, height: 20 },
+          { x: 2450, y: 210, width: 130, height: 20 }, { x: 3350, y: 215, width: 140, height: 20 },
+        ],
+        enemies: [
+          makeEnemy(350, groundY - 70, 'egg', 6.5), makeEnemy(650, groundY - 70, 'onion', 7),
+          makeEnemy(950, groundY - 70, 'egg', 7), makeEnemy(1250, groundY - 70, 'onion', 7),
+          makeEnemy(1550, groundY - 70, 'egg', 7), makeEnemy(1850, groundY - 70, 'onion', 7.5),
+          makeEnemy(2150, groundY - 70, 'egg', 7), makeEnemy(2450, groundY - 70, 'onion', 7.5),
+          makeEnemy(2750, groundY - 70, 'egg', 7.5), makeEnemy(3050, groundY - 70, 'onion', 8),
+          makeEnemy(3350, groundY - 70, 'egg', 7.5), makeEnemy(3650, groundY - 70, 'onion', 8),
+          makeEnemy(3900, groundY - 70, 'egg', 8),
+        ],
+        boss: null, weaponPickups: [],
+        healthPickups: [makeHealthPickup(500, groundY - 30, 6), makeHealthPickup(1150, groundY - 30, 6), makeHealthPickup(1800, groundY - 30, 6), makeHealthPickup(2500, groundY - 30, 6), makeHealthPickup(3200, groundY - 30, 6), makeHealthPickup(3700, groundY - 30, 6)],
+        ammoPickups: [makeAmmoPickup(450, groundY - 30, 20), makeAmmoPickup(1100, groundY - 30, 20), makeAmmoPickup(1750, groundY - 30, 20), makeAmmoPickup(2450, groundY - 30, 20), makeAmmoPickup(3100, groundY - 30, 20)],
+      });
+
+    case 22:
+    default:
+      // Chapter 11: THE IRON MAW — Mech-Worm Boss Battle
+      return L({
+        width: 2000, groundY, isBossLevel: true, chapter: 11,
+        platforms: [
+          { x: 0, y: groundY, width: 2000, height: 100 },
+          // Wide open arena with mid-height platforms to dodge the worm
+          { x: 150, y: 380, width: 180, height: 20 }, { x: 500, y: 310, width: 200, height: 20 },
+          { x: 900, y: 380, width: 180, height: 20 }, { x: 1300, y: 310, width: 200, height: 20 },
+          { x: 1700, y: 380, width: 180, height: 20 },
+          // High platforms to escape the suck attack
+          { x: 300, y: 220, width: 150, height: 20 }, { x: 700, y: 220, width: 150, height: 20 },
+          { x: 1100, y: 220, width: 150, height: 20 }, { x: 1500, y: 220, width: 150, height: 20 },
+        ],
+        enemies: [],
+        boss: makeMechWorm(900, groundY - 110),
+        weaponPickups: [],
+        healthPickups: [
+          makeHealthPickup(200, groundY - 30, 6), makeHealthPickup(700, groundY - 30, 6),
+          makeHealthPickup(1200, groundY - 30, 6), makeHealthPickup(1700, groundY - 30, 6),
+        ],
+        ammoPickups: [makeAmmoPickup(400, groundY - 30, 25), makeAmmoPickup(1100, groundY - 30, 25), makeAmmoPickup(1600, groundY - 30, 25)],
       });
   }
 };
