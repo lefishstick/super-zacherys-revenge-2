@@ -58,9 +58,9 @@ const makeAmmoPickup = (x: number, y: number, ammoAmount = 10): AmmoPickup => ({
 export const TOTAL_LEVELS = 22;
 
 const makeMechWorm = (x: number, y: number): Boss => ({
-  x, y, width: 320, height: 110,
+  x, y, width: 360, height: 120,
   velocityX: 0, velocityY: 0,
-  health: 80, maxHealth: 80,
+  health: 120, maxHealth: 120,
   isAlive: true, phase: 1,
   attackCooldown: 100, attackType: 'idle', direction: -1,
   bossType: 'mech_worm',

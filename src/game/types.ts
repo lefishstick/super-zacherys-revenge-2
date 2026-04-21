@@ -147,6 +147,7 @@ export interface Player extends Entity {
   weapons: WeaponType[];
   isLevi: boolean;
   isCJ: boolean;
+  isJesse: boolean;
   devouredEnemies: number;
   leviAbilities: LeviAbility[];
   cjAbilities: CJAbility[];
@@ -172,7 +173,7 @@ export interface Boss extends Entity {
   isAlive: boolean;
   phase: number;
   attackCooldown: number;
-  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn' | 'cannon' | 'missiles' | 'machinegun' | 'suck';
+  attackType: 'charge' | 'shoot' | 'stomp' | 'idle' | 'root_attack' | 'toxic_gas' | 'laser' | 'spawn' | 'cannon' | 'missiles' | 'machinegun' | 'suck' | 'plant_burst' | 'mech_slam' | 'mortar';
   direction: number;
   bossType?: 'colossus' | 'rotten_core' | 'rotten_tank' | 'mech_worm';
   suckTimer?: number;
@@ -188,7 +189,7 @@ export interface Companion {
   facingRight: boolean;
   health: number;
   maxHealth: number;
-  heroType: 'zachery' | 'levi' | 'cj';
+  heroType: 'zachery' | 'levi' | 'cj' | 'jesse';
   attackTimer: number;
   invincibleTimer: number;
 }
@@ -204,6 +205,9 @@ export interface Projectile extends Entity {
   isToxicSpit?: boolean;
   isDevouredShot?: boolean;
   isGlockBullet?: boolean;
+  isBasketball?: boolean;
+  isFootball?: boolean;
+  bouncesLeft?: number;
   weaponId?: string;
 }
 

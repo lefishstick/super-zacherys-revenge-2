@@ -374,19 +374,14 @@ export const CUTSCENES: Record<string, Cutscene> = {
     lines: [
       { speaker: 'narrator', text: 'CJ empties his last magazine into the Rotten Tank\'s exposed core.' },
       { speaker: 'narrator', text: 'The tank shudders, groans, and collapses in a heap of twisted metal and corruption.' },
-      { speaker: 'narrator', text: 'The Onion commander screams as green energy dissipates from the wreckage.' },
       { speaker: 'cj', text: 'Target eliminated.' },
       { speaker: 'narrator', text: 'CJ radios in. Static at first, then…' },
       { speaker: 'zachery', text: 'CJ? Did you make it?', style: 'whisper' },
-      { speaker: 'cj', text: 'The base is clear. Tank\'s down. But Zachery…' },
-      { speaker: 'cj', text: 'There\'s something else out here. Something the corruption was protecting.' },
-      { speaker: 'narrator', text: 'CJ looks toward the horizon. Beyond the ruined base, a massive structure glows faintly.' },
-      { speaker: 'narrator', text: 'Not natural. Not mechanical. Something… else entirely.' },
+      { speaker: 'cj', text: 'The base is clear. But there\'s something else out here. Something the corruption was protecting.' },
+      { speaker: 'narrator', text: 'Beyond the ruined base, the earth itself is breathing. Something enormous moves beneath the soil.' },
       { speaker: 'zachery', text: 'Don\'t go alone. We\'ll come to you.', style: 'whisper' },
       { speaker: 'levi', text: '...I\'m still hungry.' },
       { speaker: 'cj', text: 'Then we move together. All three of us.' },
-      { speaker: 'narrator', text: 'Three heroes. One corrupted world. The real battle hasn\'t even begun.' },
-      { speaker: 'narrator', text: 'TO BE CONTINUED...' },
     ],
   },
 
@@ -528,11 +523,25 @@ export const CUTSCENES: Record<string, Cutscene> = {
   chapter11_mid: {
     id: 'chapter11_mid', title: 'The Iron Convergence', chapterName: 'The Iron Convergence',
     lines: [
-      { speaker: 'narrator', text: 'The machines have grown desperate. Their last weapon stirs beneath the earth.' },
-      { speaker: 'cj', text: 'I\'ve seen weapon schematics for something they called "The Iron Maw."' },
-      { speaker: 'levi', text: 'What is it?' },
-      { speaker: 'cj', text: 'A mechanical worm the size of a freight train. Built to consume entire battalions.' },
-      { speaker: 'zachery', text: 'Then we end it here.' },
+      { speaker: 'narrator', text: 'The earth itself is sick. Vines made of cable and bone burst from the soil.' },
+      { speaker: 'cj', text: 'This isn\'t a machine. It\'s not a plant either.' },
+      { speaker: 'levi', text: 'It\'s both. It\'s the MOTHER. The thing that made all of them.' },
+      { speaker: 'zachery', text: 'Then we end it. Today.' },
+    ],
+  },
+
+  jesse_intro: {
+    id: 'jesse_intro', title: 'A NEW CHALLENGER', chapterName: 'Jubelende Jesse',
+    lines: [
+      { speaker: 'narrator', text: 'A roar of triumph echoes across the wasteland. A figure in a varsity jacket leaps from the rubble.' },
+      { speaker: 'narrator', text: 'In one hand: a basketball. In the other: a football. Both glow with strange, brilliant energy.' },
+      { speaker: 'jesse', text: 'JUBELENDE JESSE — REPORTING FOR DUTY, BABY! Game time!' },
+      { speaker: 'cj', text: 'Who the hell are you?' },
+      { speaker: 'jesse', text: 'I\'m the captain. The MVP. The guy who shows up when the buzzer\'s about to drop.' },
+      { speaker: 'levi', text: '...I like him.' },
+      { speaker: 'zachery', text: 'You can fight?' },
+      { speaker: 'jesse', text: 'Brother, I\'ve been benched my whole life waiting for THIS game. Pass me the ball — I\'ll END THIS THING.' },
+      { speaker: 'narrator', text: 'Press Q to cycle to JESSE — basketball bounces off enemies, footballs spiral straight through them!' },
     ],
   },
 
@@ -540,38 +549,44 @@ export const CUTSCENES: Record<string, Cutscene> = {
     id: 'chapter11_late', title: 'The Iron Convergence', chapterName: 'The Iron Convergence',
     lines: [
       { speaker: 'narrator', text: 'The tunnels shake. Massive burrow trails scar the earth around them.' },
-      { speaker: 'levi', text: 'It\'s circling us.' },
-      { speaker: 'zachery', text: 'Good. That means it\'s scared.' },
-      { speaker: 'cj', text: 'Or it\'s hungry. Either way — we don\'t let it get a taste of us.' },
+      { speaker: 'jesse', text: 'It\'s circling us. Setting up the play.' },
+      { speaker: 'levi', text: 'Then we hit it FIRST.' },
+      { speaker: 'cj', text: 'On three. All four of us.' },
+      { speaker: 'zachery', text: 'No more running.' },
       { speaker: 'narrator', text: 'Watch out for the suck attack — if it catches you, MASH J to escape!' },
     ],
   },
 
   mech_worm_intro: {
-    id: 'mech_worm_intro', title: 'THE IRON MAW', chapterName: 'The Iron Maw — Boss Battle',
+    id: 'mech_worm_intro', title: 'THE MOTHER OF ALL ROT', chapterName: 'Mother of All Rot — Final Battle',
     lines: [
-      { speaker: 'narrator', text: 'The ground erupts. From the wreckage rises the Iron Maw — The final weapon of the machine empire.' },
-      { speaker: 'narrator', text: 'Hundreds of armored segments. Acid glands. A maw that devours armies whole.' },
+      { speaker: 'narrator', text: 'The ground tears open. A monstrous earthworm rises — half steel, half writhing vegetation.' },
+      { speaker: 'narrator', text: 'Plant tendrils whip the air. Mechanical pistons drive its segmented body. This is the Mother — the source of every Onion, every MechEgg.' },
+      { speaker: 'jesse', text: 'Now THAT\'S a worthy opponent.' },
       { speaker: 'levi', text: '...*smiles slowly*... My turn.' },
-      { speaker: 'cj', text: 'All three of us. Together.' },
+      { speaker: 'cj', text: 'All four of us. Together.' },
       { speaker: 'zachery', text: 'FOR EVERYTHING WE\'VE LOST.' },
     ],
   },
 
   worm_phase2: {
-    id: 'worm_phase2', title: 'The Iron Maw — Phase 2', chapterName: 'The Hunger',
+    id: 'worm_phase2', title: 'Mother of All Rot — Phase 2', chapterName: 'The Bloom',
     lines: [
-      { speaker: 'narrator', text: 'The Iron Maw shudders — its outer armor plates crack and fall away, revealing the pulsing mechanisms beneath.' },
+      { speaker: 'narrator', text: 'The Mother\'s armor cracks — and from every fissure, BLOOMING TENDRILS erupt outward like spears.' },
+      { speaker: 'narrator', text: 'A cinematic burst of toxic petals fills the sky. The plants are FIGHTING BACK.' },
+      { speaker: 'jesse', text: 'Whoa whoa WHOA! It\'s pulling out the trick plays!' },
       { speaker: 'cj', text: 'Armor\'s breaking down! Keep hitting it!' },
-      { speaker: 'narrator', text: 'SUCK ATTACK ACTIVE! If captured — MASH J to break free!' },
+      { speaker: 'narrator', text: 'PLANT BURST + SUCK ATTACK ACTIVE! If captured — MASH J to break free!' },
     ],
   },
 
   worm_phase3: {
-    id: 'worm_phase3', title: 'The Iron Maw — Phase 3', chapterName: 'Full Consumption',
+    id: 'worm_phase3', title: 'Mother of All Rot — Phase 3', chapterName: 'The Mechanized Wrath',
     lines: [
-      { speaker: 'narrator', text: 'Critically damaged, the Iron Maw unleashes everything. Its maw opens wide, consuming the very air around it.' },
+      { speaker: 'narrator', text: 'The vegetation withers. Steel pistons fire white-hot. The Mother\'s mechanical core ROARS to life.' },
+      { speaker: 'narrator', text: 'Mortar shells launch from her spine. Her body slams the earth with each pass. THIS is her final form.' },
       { speaker: 'levi', text: 'FINAL STAND! I CAN FEEL ITS CORE!' },
+      { speaker: 'jesse', text: 'OVERTIME! LET\'S GO!' },
       { speaker: 'zachery', text: 'Don\'t let up! END IT!' },
     ],
   },
@@ -579,13 +594,15 @@ export const CUTSCENES: Record<string, Cutscene> = {
   true_ending: {
     id: 'true_ending', title: 'THE END', chapterName: 'Epilogue',
     lines: [
-      { speaker: 'narrator', text: 'With a final, earth-shaking shriek, the Iron Maw collapses. Its core goes dark.' },
-      { speaker: 'narrator', text: 'The machine empire\'s last weapon — destroyed by the three heroes it was built to consume.' },
+      { speaker: 'narrator', text: 'With a final, earth-shaking shriek, the Mother of All Rot collapses. Her core goes dark forever.' },
+      { speaker: 'narrator', text: 'The source of every corruption — destroyed by the four heroes she was built to consume.' },
+      { speaker: 'jesse', text: 'GAME. SET. MATCH.' },
       { speaker: 'cj', text: 'It\'s over.' },
-      { speaker: 'levi', text: '...*quietly*... For now.' },
-      { speaker: 'zachery', text: 'No. It\'s over. We won.' },
-      { speaker: 'narrator', text: 'The forests begin to heal. The machines fall silent. The world, scarred and tired, breathes again.' },
-      { speaker: 'narrator', text: 'Three warriors stand together in the ruins — not as soldiers, but as survivors.' },
+      { speaker: 'levi', text: '...*quietly*... For real this time.' },
+      { speaker: 'zachery', text: 'Yeah. We won.' },
+      { speaker: 'narrator', text: 'The forests heal. The machines fall silent. The Onions and MechEggs crumble to harmless dust.' },
+      { speaker: 'narrator', text: 'Four warriors stand together in the ruins — a soldier, a hunter, a champion, and a hero.' },
+      { speaker: 'jesse', text: 'So... when\'s the next game?' },
       { speaker: 'narrator', text: 'They had saved the world. And that, finally, was enough.' },
       { speaker: 'narrator', text: '— THE END —' },
     ],
@@ -612,10 +629,10 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   16: ['chapter9_start'],
   17: ['chapter9_mid'],
   18: ['rotten_tank_intro'],
-  19: ['chapter11_start'],
+  19: ['ending', 'chapter11_start'],
   20: ['chapter11_mid'],
-  21: ['chapter11_late'],
-  22: ['mech_worm_intro'],
+  21: ['jesse_intro'],
+  22: ['chapter11_late', 'mech_worm_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up
@@ -642,4 +659,4 @@ export const CJ_ABILITY_CUTSCENES: Record<string, string> = {
   airstrike: 'ability_airstrike',
 };
 
-export const VICTORY_CUTSCENE = 'ending';
+export const VICTORY_CUTSCENE = 'true_ending';

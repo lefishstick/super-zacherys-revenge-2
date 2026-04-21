@@ -16,6 +16,8 @@ const SPEAKER_COLORS: Record<string, string> = {
   core: 'text-game-toxic font-bold',
   cj: 'text-blue-400 font-bold',
   tank: 'text-red-400 font-bold',
+  jesse: 'text-yellow-400 font-bold',
+  worm: 'text-game-toxic font-bold',
 };
 
 const SPEAKER_LABELS: Record<string, string> = {
@@ -28,6 +30,8 @@ const SPEAKER_LABELS: Record<string, string> = {
   core: 'The Rotten Core',
   cj: 'Sgt. CJ',
   tank: 'The Rotten Tank',
+  jesse: 'Jubelende Jesse',
+  worm: 'The Mother of All Rot',
 };
 
 const CutsceneScreen = ({ cutscenes, onComplete }: CutsceneScreenProps) => {

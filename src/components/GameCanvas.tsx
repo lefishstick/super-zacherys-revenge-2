@@ -8,7 +8,7 @@ import CutsceneScreen from './CutsceneScreen';
 
 // Chapter start levels — checkpoints are set at chapter boundaries
 const CHAPTER_START_LEVEL: Record<number, number> = {
-  1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 14, 9: 16, 10: 18,
+  1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 14, 9: 16, 10: 18, 11: 19,
 };
 
 function getChapterForLevel(level: number): number {
@@ -24,8 +24,11 @@ const GameCanvas = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const leviAudioRef = useRef<HTMLAudioElement | null>(null);
   const cjAudioRef = useRef<HTMLAudioElement | null>(null);
+  const jesseAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wormAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isLevi, setIsLevi] = useState(false);
   const [isCJ, setIsCJ] = useState(false);
+  const [isJesse, setIsJesse] = useState(false);
   const [cutsceneQueue, setCutsceneQueue] = useState<Cutscene[]>([]);
   const [showCutscene, setShowCutscene] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<number | null>(null);
@@ -79,9 +82,74 @@ const GameCanvas = () => {
     return () => window.removeEventListener('switch_to_cj', handler);
   }, []);
 
+  // Listen for Jesse switch event
+  useEffect(() => {
+    const handler = () => {
+      setIsJesse(true);
+      setIsCJ(false);
+      setIsLevi(false);
+      audioRef.current?.pause();
+      leviAudioRef.current?.pause();
+      cjAudioRef.current?.pause();
+      if (!jesseAudioRef.current) {
+        jesseAudioRef.current = new Audio('/audio/jesse-theme.mp3');
+        jesseAudioRef.current.loop = true;
+        jesseAudioRef.current.volume = 0.4;
+      }
+      jesseAudioRef.current.play().catch(() => {});
+    };
+    window.addEventListener('switch_to_jesse', handler);
+    return () => window.removeEventListener('switch_to_jesse', handler);
+  }, []);
+
+  // Listen for hero swap back to non-Jesse heroes — pause Jesse music
+  useEffect(() => {
+    const handler = () => {
+      setIsJesse(false);
+      jesseAudioRef.current?.pause();
+    };
+    window.addEventListener('switch_to_zachery', handler);
+    window.addEventListener('switch_to_levi', handler);
+    window.addEventListener('switch_to_cj', handler);
+    return () => {
+      window.removeEventListener('switch_to_zachery', handler);
+      window.removeEventListener('switch_to_levi', handler);
+      window.removeEventListener('switch_to_cj', handler);
+    };
+  }, []);
+
+  // Boss music: play great-worm-boss theme on level 22
+  useEffect(() => {
+    if (gameState === 'playing' && currentLevel === 22) {
+      audioRef.current?.pause();
+      leviAudioRef.current?.pause();
+      cjAudioRef.current?.pause();
+      jesseAudioRef.current?.pause();
+      if (!wormAudioRef.current) {
+        wormAudioRef.current = new Audio('/audio/great-worm-boss.mp3');
+        wormAudioRef.current.loop = true;
+        wormAudioRef.current.volume = 0.5;
+      }
+      wormAudioRef.current.play().catch(() => {});
+    } else {
+      wormAudioRef.current?.pause();
+    }
+  }, [gameState, currentLevel]);
+
   useEffect(() => {
     if (gameState === 'playing' || gameState === 'cutscene') {
-      if (isCJ) {
+      if (currentLevel === 22) {
+        // Boss music handled separately
+        return;
+      }
+      if (isJesse) {
+        if (!jesseAudioRef.current) {
+          jesseAudioRef.current = new Audio('/audio/jesse-theme.mp3');
+          jesseAudioRef.current.loop = true;
+          jesseAudioRef.current.volume = 0.4;
+        }
+        jesseAudioRef.current.play().catch(() => {});
+      } else if (isCJ) {
         if (!cjAudioRef.current) {
           cjAudioRef.current = new Audio('/audio/cj-theme.mp3');
           cjAudioRef.current.loop = true;
@@ -110,8 +178,12 @@ const GameCanvas = () => {
       if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
       cjAudioRef.current?.pause();
       if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
+      jesseAudioRef.current?.pause();
+      if (jesseAudioRef.current) jesseAudioRef.current.currentTime = 0;
+      wormAudioRef.current?.pause();
+      if (wormAudioRef.current) wormAudioRef.current.currentTime = 0;
     }
-  }, [gameState, isLevi]);
+  }, [gameState, isLevi, isCJ, isJesse, currentLevel]);
 
   // When game signals a cutscene-before-level
   useEffect(() => {

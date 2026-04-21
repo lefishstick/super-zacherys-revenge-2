@@ -12,6 +12,7 @@ const rottenCoreImg = '/images/rotten-core.png';
 const leviImg = '/images/levi.png';
 const cjImg = '/images/cj.png';
 const rottenTankImg = '/images/rotten-tank.png';
+const jesseImg = '/images/jesse.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -89,7 +90,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg, jesse: jesseImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -123,10 +124,12 @@ export function useGameLoop() {
     s.transitioning = false;
     const isLevi = s.player?.isLevi ?? false;
     const isCJ = s.player?.isCJ ?? false;
+    const isJesse = s.player?.isJesse ?? false;
     const leviMaxHP = 20;
     const zachMaxHP = 10;
     const cjMaxHP = 15;
-    const maxHP = isCJ ? cjMaxHP : isLevi ? leviMaxHP : zachMaxHP;
+    const jesseMaxHP = 18;
+    const maxHP = isJesse ? jesseMaxHP : isCJ ? cjMaxHP : isLevi ? leviMaxHP : zachMaxHP;
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
@@ -140,6 +143,7 @@ export function useGameLoop() {
       weapons: s.player?.weapons ?? ['forest_blade'],
       isLevi,
       isCJ,
+      isJesse,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
       leviAbilities: s.player?.leviAbilities ?? [],
       cjAbilities: s.player?.cjAbilities ?? [],
@@ -151,26 +155,32 @@ export function useGameLoop() {
     
     // Chapter 11+: Initialize AI companion heroes
     if (level.chapter >= 11) {
-      const makeComp = (heroType: 'zachery' | 'levi' | 'cj', xOff: number): Companion => ({
+      // Jesse joins at level 21 (mid-chapter 11)
+      if (levelNum >= 21 && !s.heroOrder.includes('jesse')) {
+        s.heroOrder = [...s.heroOrder, 'jesse'];
+        window.dispatchEvent(new CustomEvent('switch_to_jesse'));
+      }
+      const heroHP = (h: 'zachery' | 'levi' | 'cj' | 'jesse') =>
+        h === 'levi' ? 20 : h === 'jesse' ? 18 : h === 'cj' ? 15 : 10;
+      const makeComp = (heroType: 'zachery' | 'levi' | 'cj' | 'jesse', xOff: number): Companion => ({
         x: 50 + xOff, y: level.groundY - 60,
         width: 40, height: 55,
         velocityY: 0, onGround: false,
         facingRight: true,
-        health: heroType === 'levi' ? 20 : heroType === 'cj' ? 15 : 10,
-        maxHealth: heroType === 'levi' ? 20 : heroType === 'cj' ? 15 : 10,
+        health: heroHP(heroType),
+        maxHealth: heroHP(heroType),
         heroType,
         attackTimer: 0,
         invincibleTimer: 0,
       });
-      // Build companions as the two heroes NOT currently controlled
-      // After chapter 10 the player is CJ (activeHeroIndex=2 in heroOrder)
-      // heroOrder = ['zachery','levi','cj'], active = 2 → companions = zachery & levi
-      const allHeroes: ('zachery' | 'levi' | 'cj')[] = ['zachery', 'levi', 'cj'];
       const activeHero = s.heroOrder[s.activeHeroIndex];
       // Make sure player type matches
       s.player.isCJ = activeHero === 'cj';
       s.player.isLevi = activeHero === 'levi';
-      s.companions = allHeroes
+      s.player.isJesse = activeHero === 'jesse';
+      s.player.maxHealth = heroHP(activeHero);
+      if (s.player.health > s.player.maxHealth) s.player.health = s.player.maxHealth;
+      s.companions = s.heroOrder
         .filter(h => h !== activeHero)
         .map((h, i) => makeComp(h, -40 - i * 50));
       s.suckState.active = false;
@@ -508,8 +518,20 @@ export function useGameLoop() {
               setGameState('victory');
               setScore(s.score);
             }, 500);
+          } else if (bType === 'rotten_tank') {
+            // Rotten Tank defeated → advance into Chapter 11 (level 19)
+            // Player remains CJ; cutscenes ('ending' + 'chapter11_start') play before level 19
+            setScore(s.score);
+            const nextLevel = s.levelNum + 1;
+            const handler = (window as any).__handleLevelTransition;
+            if (handler) {
+              handler(nextLevel);
+            } else {
+              setCurrentLevel(nextLevel);
+              initLevel(nextLevel);
+            }
           } else {
-            // Final boss (Rotten Tank) — victory / next chapter!
+            // Fallback victory
             s.gameState = 'victory';
             setGameState('victory');
             setScore(s.score);
@@ -541,7 +563,7 @@ export function useGameLoop() {
         s.qWasUp = false;
         // Cycle to next hero
         const prevIdx = s.activeHeroIndex;
-        s.activeHeroIndex = (s.activeHeroIndex + 1) % 3;
+        s.activeHeroIndex = (s.activeHeroIndex + 1) % s.heroOrder.length;
         const newHero = s.heroOrder[s.activeHeroIndex];
         const prevHero = s.heroOrder[prevIdx];
 
@@ -559,8 +581,18 @@ export function useGameLoop() {
           p.health = newComp.health; p.maxHealth = newComp.maxHealth;
           p.isCJ = newHero === 'cj';
           p.isLevi = newHero === 'levi';
+          p.isJesse = newHero === 'jesse';
           if (p.isCJ) { p.ammo = p.ammo || 30; p.maxAmmo = 30; }
           else { p.maxAmmo = 0; }
+          if (newHero === 'jesse') {
+            window.dispatchEvent(new CustomEvent('switch_to_jesse'));
+          } else if (newHero === 'cj') {
+            window.dispatchEvent(new CustomEvent('switch_to_cj'));
+          } else if (newHero === 'levi') {
+            window.dispatchEvent(new CustomEvent('switch_to_levi'));
+          } else {
+            window.dispatchEvent(new CustomEvent('switch_to_zachery'));
+          }
           p.velocityX = 0; p.velocityY = 0;
 
           // Replace companion slot with old hero
@@ -667,12 +699,12 @@ export function useGameLoop() {
             const ex = Math.abs(e.x - comp.x);
             if (ex < 120) {
               // Deal damage to nearest enemy
-              e.health -= comp.heroType === 'levi' ? 3 : comp.heroType === 'cj' ? 2 : 2;
+              e.health -= comp.heroType === 'levi' ? 3 : comp.heroType === 'jesse' ? 3 : comp.heroType === 'cj' ? 2 : 2;
               if (e.health <= 0) {
                 e.health = 0; e.isAlive = false;
                 s.score += 100;
                 spawnParticles(e.x + e.width / 2, e.y + e.height / 2,
-                  comp.heroType === 'levi' ? '#ff6600' : comp.heroType === 'cj' ? '#ffee44' : '#aaff44', 8);
+                  comp.heroType === 'levi' ? '#ff6600' : comp.heroType === 'cj' ? '#ffee44' : comp.heroType === 'jesse' ? '#ff8822' : '#aaff44', 8);
               }
               comp.attackTimer = 50;
               comp.facingRight = e.x > comp.x;
@@ -687,7 +719,7 @@ export function useGameLoop() {
               comp.attackTimer = 40;
               comp.facingRight = level.boss.x > comp.x;
               spawnParticles(level.boss.x + level.boss.width / 2, level.boss.y + 30,
-                comp.heroType === 'cj' ? '#ffee44' : '#aaff44', 4);
+                comp.heroType === 'cj' ? '#ffee44' : comp.heroType === 'jesse' ? '#ff8822' : '#aaff44', 4);
             }
           }
         }
@@ -802,6 +834,22 @@ export function useGameLoop() {
           p.attackTimer = hasFrenzy ? 12 : 20;
           spawnParticles(p.x + (p.facingRight ? p.width + 15 : -15), p.y + p.height / 2, '#ff6600', 10);
 
+        } else if (p.isJesse) {
+          // JESSE J = throw bouncing basketball
+          p.attackTimer = 16;
+          s.projectiles.push({
+            x: p.x + (p.facingRight ? p.width : -14),
+            y: p.y + p.height / 2 - 8,
+            width: 16, height: 16,
+            velocityX: (p.facingRight ? 1 : -1) * 12,
+            velocityY: -2,
+            isPlayerProjectile: true,
+            damage: 4, lifetime: 110,
+            isBasketball: true,
+            bouncesLeft: 3,
+          });
+          spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#ff8822', 6);
+
         } else {
           // ZACHERY: attack with current weapon
           p.attackTimer = weapon.speed;
@@ -889,6 +937,23 @@ export function useGameLoop() {
             spawnParticles(p.x + p.width / 2, p.y - 10, '#ffaa00', 15);
           }
         }
+
+      } else if (p.isJesse && p.attackTimer <= 0) {
+        // JESSE E = football pass — fast piercing spiral
+        p.attackTimer = 28;
+        p.isAttacking = true;
+        s.projectiles.push({
+          x: p.x + (p.facingRight ? p.width : -22),
+          y: p.y + p.height / 2 - 6,
+          width: 22, height: 12,
+          velocityX: (p.facingRight ? 1 : -1) * 22,
+          velocityY: 0,
+          isPlayerProjectile: true,
+          damage: 7, lifetime: 70,
+          isFootball: true,
+        });
+        spawnParticles(p.x + (p.facingRight ? p.width : 0), p.y + p.height / 2, '#aa5533', 10);
+        spawnParticles(p.x + (p.facingRight ? p.width + 10 : -10), p.y + p.height / 2, '#ffffff', 4);
 
       } else if (p.isLevi && p.attackTimer <= 0) {
         // LEVI E = ranged special
@@ -1871,10 +1936,29 @@ export function useGameLoop() {
 
     // Update projectiles
     s.projectiles = s.projectiles.filter(proj => {
-      proj.velocityY += proj.isGrenade ? GRAVITY * 0.6 : 0;
+      proj.velocityY += proj.isGrenade ? GRAVITY * 0.6 : proj.isBasketball ? GRAVITY * 0.4 : 0;
       proj.x += proj.velocityX;
       proj.y += proj.velocityY;
       proj.lifetime--;
+
+      // Basketball: bounces off ground/platforms (limited bounces)
+      if (proj.isBasketball) {
+        for (const plat of level.platforms) {
+          if (
+            proj.x + proj.width > plat.x && proj.x < plat.x + plat.width &&
+            proj.y + proj.height > plat.y && proj.y + proj.height < plat.y + plat.height + 14 &&
+            proj.velocityY >= 0
+          ) {
+            proj.y = plat.y - proj.height;
+            proj.velocityY = -8;
+            proj.bouncesLeft = (proj.bouncesLeft ?? 0) - 1;
+            spawnParticles(proj.x + proj.width / 2, proj.y + proj.height, '#ff8822', 4);
+            if ((proj.bouncesLeft ?? 0) < 0) {
+              return false;
+            }
+          }
+        }
+      }
 
       // Grenade — bounce off ground/platforms, explode on timer
       if (proj.isGrenade) {
@@ -1943,6 +2027,8 @@ export function useGameLoop() {
                 });
               }
             }
+            // Football pierces — keeps going through enemies
+            if (proj.isFootball) continue;
             return false;
           }
         }
@@ -3022,6 +3108,30 @@ export function useGameLoop() {
         ctx.shadowColor = phaseGlow;
         ctx.shadowBlur = 20 + Math.sin(t * 0.006) * 12;
 
+        // PLANT TENDRILS overlay (phases 1-2): writhing vines erupt from body
+        if (b.phase <= 2) {
+          ctx.save();
+          for (let v = 0; v < 8; v++) {
+            const vbase = bx + (v / 7) * b.width;
+            const vsway = Math.sin(t * 0.003 + v * 0.7) * 18;
+            const vlen = 60 + Math.sin(t * 0.004 + v) * 20;
+            ctx.strokeStyle = '#3a8a3a';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#22ff44';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(vbase, b.y);
+            ctx.quadraticCurveTo(vbase + vsway, b.y - vlen / 2, vbase + vsway * 1.5, b.y - vlen);
+            ctx.stroke();
+            // Petal at the tip
+            ctx.fillStyle = '#aa44ff';
+            ctx.beginPath();
+            ctx.arc(vbase + vsway * 1.5, b.y - vlen, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         // Body segments (5 segments from tail to head)
         const segW = b.width / 5;
         const segH = b.height;
@@ -3124,8 +3234,8 @@ export function useGameLoop() {
         ctx.fillStyle = '#ffffff';
         ctx.font = '12px MedievalSharp';
         ctx.textAlign = 'center';
-        ctx.fillText('THE IRON MAW', CANVAS_W / 2, 52);
-        const wormPhaseNames = ['Burrowing', 'The Hunger', 'Full Consumption'];
+        ctx.fillText('THE MOTHER OF ALL ROT', CANVAS_W / 2, 52);
+        const wormPhaseNames = ['The Awakening', 'The Bloom', 'Mechanized Wrath'];
         ctx.fillStyle = wormBarColor;
         ctx.font = '10px MedievalSharp';
         ctx.fillText(`Phase ${b.phase}: ${wormPhaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
@@ -3188,7 +3298,9 @@ export function useGameLoop() {
         if (comp.health <= 0) continue;
         const compX = comp.x - camX;
         const compImage = comp.heroType === 'cj' ? s.images.cj
-          : comp.heroType === 'levi' ? s.images.levi : s.images.player;
+          : comp.heroType === 'levi' ? s.images.levi
+          : comp.heroType === 'jesse' ? s.images.jesse
+          : s.images.player;
         if (compImage?.complete) {
           ctx.save();
           // Flicker when hit
@@ -3233,7 +3345,7 @@ export function useGameLoop() {
 
     // Draw player
     const px = p.x - camX;
-    const playerImage = p.isCJ ? s.images.cj : p.isLevi ? s.images.levi : s.images.player;
+    const playerImage = p.isJesse ? s.images.jesse : p.isCJ ? s.images.cj : p.isLevi ? s.images.levi : s.images.player;
     const isRolling = s.rollState.isRolling;
     if (playerImage?.complete) {
       ctx.save();
@@ -3576,6 +3688,52 @@ export function useGameLoop() {
         ctx.beginPath(); ctx.ellipse(bx, by, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
 
+      } else if (proj.isBasketball) {
+        // Basketball: orange ball with seams, slight glow
+        const bx = ppx + proj.width / 2;
+        const by = proj.y + proj.height / 2;
+        const r = proj.width / 2;
+        ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 10;
+        const bg = ctx.createRadialGradient(bx - 3, by - 3, 1, bx, by, r);
+        bg.addColorStop(0, '#ffaa55');
+        bg.addColorStop(1, '#cc4400');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // Seams
+        ctx.strokeStyle = '#331100'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx - r, by); ctx.lineTo(bx + r, by); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx, by - r); ctx.lineTo(bx, by + r); ctx.stroke();
+      } else if (proj.isFootball) {
+        // Football: brown spiraling ovoid
+        const fx = ppx + proj.width / 2;
+        const fy = proj.y + proj.height / 2;
+        const ang = (Date.now() * 0.04) % (Math.PI * 2);
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(proj.velocityX > 0 ? 0 : Math.PI);
+        ctx.shadowColor = '#aa5533'; ctx.shadowBlur = 8;
+        const fg = ctx.createRadialGradient(-2, -2, 1, 0, 0, proj.width / 2);
+        fg.addColorStop(0, '#cc7744');
+        fg.addColorStop(1, '#552200');
+        ctx.fillStyle = fg;
+        ctx.beginPath(); ctx.ellipse(0, 0, proj.width / 2, proj.height / 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // Laces
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke();
+        for (let l = -3; l <= 3; l += 2) {
+          ctx.beginPath(); ctx.moveTo(l, -2); ctx.lineTo(l, 2); ctx.stroke();
+        }
+        ctx.restore();
+        // Spiral spin sparkle
+        ctx.fillStyle = '#ffffff';
+        const sparkX = fx - Math.cos(ang) * 12 * (proj.velocityX > 0 ? 1 : -1);
+        const sparkY = fy + Math.sin(ang) * 4;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.arc(sparkX, sparkY, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
       } else if (proj.isToxicSpit) {
         // Toxic spit: bubbling green acid blob
         const tx2 = ppx + proj.width / 2;
@@ -3716,13 +3874,13 @@ export function useGameLoop() {
       19: '11-1: The Iron Convergence',
       20: '11-2: Worm Tunnels',
       21: '11-3: The Maw Awakens',
-      22: '11-4: The Iron Maw',
+      22: '11-4: The Mother of All Rot',
     };
     ctx.fillText(chapterNames[s.levelNum] || `Level ${s.levelNum}`, CANVAS_W - 15, 48);
 
     // Chapter 11: Q-key hero swap hint
     if (s.level?.chapter === 11 && s.companions.length > 0) {
-      const heroColors: Record<string, string> = { zachery: '#44ff88', levi: '#ff6600', cj: '#4488ff' };
+      const heroColors: Record<string, string> = { zachery: '#44ff88', levi: '#ff6600', cj: '#4488ff', jesse: '#ffee22' };
       const heroName = s.heroOrder[s.activeHeroIndex];
       const heroColor = heroColors[heroName] || '#ffffff';
       ctx.fillStyle = '#000000aa';
@@ -3733,7 +3891,7 @@ export function useGameLoop() {
       ctx.fillStyle = heroColor;
       ctx.font = 'bold 11px MedievalSharp';
       ctx.textAlign = 'center';
-      const displayName = heroName === 'zachery' ? 'ZACHERY' : heroName === 'levi' ? 'LEVI' : 'CJ';
+      const displayName = heroName === 'zachery' ? 'ZACHERY' : heroName === 'levi' ? 'LEVI' : heroName === 'jesse' ? 'JESSE' : 'CJ';
       ctx.fillText(`[Q] SWITCH HERO  |  ACTIVE: ${displayName}`, CANVAS_W / 2, CANVAS_H - 21);
     }
 
@@ -3773,6 +3931,19 @@ export function useGameLoop() {
         ctx.fillStyle = '#99aabb'; ctx.font = '10px MedievalSharp';
         ctx.fillText('2×←/→:Roll', 160, CANVAS_H - 24);
       }
+    } else if (p.isJesse) {
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(10, CANVAS_H - 60, 260, 50);
+      ctx.strokeStyle = '#ffee22';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, CANVAS_H - 60, 260, 50);
+      ctx.fillStyle = '#ffee22';
+      ctx.font = 'bold 14px MedievalSharp';
+      ctx.textAlign = 'left';
+      ctx.fillText('🏀 JUBELENDE JESSE', 20, CANVAS_H - 38);
+      ctx.font = '10px MedievalSharp';
+      ctx.fillStyle = '#ffddaa';
+      ctx.fillText('J: Basketball (bounces)   E: Football (pierce)', 20, CANVAS_H - 18);
     } else if (p.isLevi) {
       ctx.fillStyle = '#000000aa';
       ctx.fillRect(10, CANVAS_H - 60, 280, 50);
