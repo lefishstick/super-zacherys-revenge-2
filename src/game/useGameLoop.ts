@@ -6,10 +6,12 @@ import onionImg from '@/assets/OnionEnemy.png';
 import eggImg from '@/assets/eggEnemy.png';
 import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
-import rottenCoreImg from '/images/rotten-core.png';
-import leviImg from '/images/levi.png';
-import cjImg from '/images/cj.png';
-import rottenTankImg from '/images/rotten-tank.png';
+
+// Images in public/ can be referenced by string paths
+const rottenCoreImg = '/images/rotten-core.png';
+const leviImg = '/images/levi.png';
+const cjImg = '/images/cj.png';
+const rottenTankImg = '/images/rotten-tank.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -2473,6 +2475,15 @@ export function useGameLoop() {
     }
   };
 
+  const safeRoundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      // Fallback for older browsers
+      ctx.rect(x, y, w, h);
+    }
+  };
+
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3024,7 +3035,7 @@ export function useGameLoop() {
           
           ctx.fillStyle = segColor;
           ctx.beginPath();
-          ctx.roundRect(segX, b.y + wobble, segW - 4, segH, isHead ? 8 : 4);
+          safeRoundRect(ctx, segX, b.y + wobble, segW - 4, segH, isHead ? 8 : 4);
           ctx.fill();
 
           // Metal bands / armor rings
@@ -3048,7 +3059,7 @@ export function useGameLoop() {
         const wobbleHead = Math.sin(t * 0.005) * 4;
         ctx.fillStyle = '#1a4a1a';
         ctx.beginPath();
-        ctx.roundRect(headX, b.y + wobbleHead - 6, segW + 10, segH + 12, 10);
+        safeRoundRect(ctx, headX, b.y + wobbleHead - 6, segW + 10, segH + 12, 10);
         ctx.fill();
         ctx.shadowBlur = 0;
 
@@ -3174,10 +3185,10 @@ export function useGameLoop() {
     // Draw companions (Chapter 11 — the inactive heroes follow as AI)
     if (s.companions.length > 0) {
       for (const comp of s.companions) {
-        if (!comp.alive) continue;
+        if (comp.health <= 0) continue;
         const compX = comp.x - camX;
-        const compImage = comp.heroId === 'cj' ? s.images.cj
-          : comp.heroId === 'levi' ? s.images.levi : s.images.player;
+        const compImage = comp.heroType === 'cj' ? s.images.cj
+          : comp.heroType === 'levi' ? s.images.levi : s.images.player;
         if (compImage?.complete) {
           ctx.save();
           // Flicker when hit
@@ -3185,9 +3196,9 @@ export function useGameLoop() {
             ctx.globalAlpha = 0.4;
           }
           // Hero-specific glow
-          if (comp.heroId === 'cj') {
+          if (comp.heroType === 'cj') {
             ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 10;
-          } else if (comp.heroId === 'levi') {
+          } else if (comp.heroType === 'levi') {
             ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10;
           } else {
             ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8;
@@ -3209,13 +3220,13 @@ export function useGameLoop() {
           const barY = comp.y + comp.height + 3;
           ctx.fillStyle = '#330000';
           ctx.fillRect(compX, barY, barW, barH);
-          ctx.fillStyle = comp.heroId === 'cj' ? '#4488ff' : comp.heroId === 'levi' ? '#ff6600' : '#44ff88';
+          ctx.fillStyle = comp.heroType === 'cj' ? '#4488ff' : comp.heroType === 'levi' ? '#ff6600' : '#44ff88';
           ctx.fillRect(compX, barY, barW * (comp.health / comp.maxHealth), barH);
           // Label above their head
           ctx.fillStyle = '#ffffffcc';
           ctx.font = 'bold 9px MedievalSharp';
           ctx.textAlign = 'center';
-          ctx.fillText(comp.heroId === 'cj' ? 'CJ' : comp.heroId === 'levi' ? 'LEVI' : 'ZACH', compX + comp.width / 2, comp.y - 5);
+          ctx.fillText(comp.heroType === 'cj' ? 'CJ' : comp.heroType === 'levi' ? 'LEVI' : 'ZACH', compX + comp.width / 2, comp.y - 5);
         }
       }
     }
