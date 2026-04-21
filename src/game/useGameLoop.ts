@@ -222,6 +222,56 @@ export function useGameLoop() {
     setGameState('playing');
   }, [initLevel]);
 
+  // Start at a specific level with a fully-loaded hero (for save resume / dev mode)
+  const startAtLevel = useCallback((levelNum: number, hero: 'zachery' | 'levi' | 'cj' | 'jesse' = 'zachery') => {
+    const s = stateRef.current;
+    s.score = 0;
+    s.gameState = 'playing';
+    s.bossPhaseTriggered = { 2: false, 3: false };
+    resetFinisher();
+    setScore(0);
+
+    const allWeapons = ['forest_blade', 'vine_whip', 'static_bolt', 'iron_fist', 'corruption_purge'];
+    const allLevi = ['mega_chomp', 'toxic_spit', 'belly_slam', 'frenzy'];
+    const allCJ = ['frag_grenade', 'flashbang', 'combat_roll', 'airstrike'];
+
+    // Seed player with full kit for the chosen hero
+    s.player = {
+      x: 50, y: 0,
+      width: 40, height: 55,
+      velocityX: 0, velocityY: 0,
+      health: hero === 'levi' ? 20 : hero === 'jesse' ? 18 : hero === 'cj' ? 15 : 10,
+      maxHealth: hero === 'levi' ? 20 : hero === 'jesse' ? 18 : hero === 'cj' ? 15 : 10,
+      isAttacking: false, attackTimer: 0,
+      facingRight: true, isJumping: false, onGround: false,
+      invincibleTimer: 0, score: 0,
+      currentWeapon: hero === 'cj' ? 'iron_fist' : 'forest_blade',
+      weapons: allWeapons,
+      isLevi: hero === 'levi',
+      isCJ: hero === 'cj',
+      isJesse: hero === 'jesse',
+      devouredEnemies: 0,
+      leviAbilities: allLevi,
+      cjAbilities: allCJ,
+      grenadeCount: 3,
+      grenadeCooldown: 0,
+      ammo: 30,
+      maxAmmo: hero === 'cj' ? 30 : 0,
+    };
+
+    // Reset hero order so chapter 11 init logic re-evaluates companions properly
+    s.heroOrder = ['zachery', 'levi', 'cj'];
+    s.activeHeroIndex = hero === 'zachery' ? 0 : hero === 'levi' ? 1 : 2;
+    if (hero === 'jesse') {
+      s.heroOrder = ['zachery', 'levi', 'cj', 'jesse'];
+      s.activeHeroIndex = 3;
+    }
+
+    setCurrentLevel(levelNum);
+    initLevel(levelNum);
+    setGameState('playing');
+  }, [initLevel]);
+
   const startFinisher = useCallback(() => {
     const s = stateRef.current;
     const f = s.finisher;
@@ -4408,5 +4458,5 @@ export function useGameLoop() {
     };
   }, [loadImages, update, render]);
 
-  return { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H };
+  return { canvasRef, gameState, score, currentLevel, startGame, startAtLevel, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H };
 }

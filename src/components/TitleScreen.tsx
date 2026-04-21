@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import bossImg from '@/assets/finalboss_2.png';
+import { loadSlots, deleteSlot, levelToChapter, CHAPTER_NAMES, type SaveSlot } from '@/game/saveSystem';
 
 interface TitleScreenProps {
   onStart: () => void;
+  onContinueSlot: (slot: SaveSlot) => void;
+  onDevMode: () => void;
 }
 
 interface Leaf {
@@ -28,13 +31,22 @@ interface TreeLeaf {
   opacity: number;
 }
 
-const TitleScreen = ({ onStart }: TitleScreenProps) => {
+const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animRef = useRef<number>(0);
   const leavesRef = useRef<Leaf[]>([]);
   const treeLeavesRef = useRef<TreeLeaf[]>([]);
   const [ready, setReady] = useState(false);
+  const [slots, setSlots] = useState<(SaveSlot | null)[]>(() => loadSlots());
+  const [showSlots, setShowSlots] = useState(false);
+
+  const refreshSlots = () => setSlots(loadSlots());
+
+  const formatDate = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   // Start title music
   useEffect(() => {
@@ -173,7 +185,7 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
         </p>
 
         <button
-          onClick={onStart}
+          onClick={() => setShowSlots(true)}
           className="mt-4 px-10 py-4 bg-primary text-primary-foreground font-game text-xl rounded-lg
             hover:bg-primary/90 transition-all duration-300
             shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_40px_hsl(var(--primary)/0.6)]
@@ -182,11 +194,69 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
           ⚔️ Start Adventure ⚔️
         </button>
 
-        <div className="mt-6 text-muted-foreground font-game text-sm text-center space-y-1 drop-shadow-md">
+        <button
+          onClick={onDevMode}
+          className="mt-2 px-5 py-2 bg-secondary/70 text-secondary-foreground font-game text-sm rounded-md hover:bg-secondary transition-all active:scale-95"
+        >
+          🛠 Dev Mode
+        </button>
+
+        <div className="mt-4 text-muted-foreground font-game text-sm text-center space-y-1 drop-shadow-md">
           <p>Arrow Keys / WASD — Move & Jump</p>
           <p>Z / J — Attack</p>
         </div>
       </div>
+
+      {showSlots && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/85 p-6">
+          <h2 className="font-display text-3xl text-primary mb-6">Choose a Save Slot</h2>
+          <div className="flex flex-col gap-3 w-full max-w-md">
+            {[0, 1, 2].map(i => {
+              const slot = slots[i];
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (slot) onContinueSlot(slot);
+                      else { onStart(); }
+                    }}
+                    className="flex-1 p-4 rounded-lg border-2 border-border bg-card/80 hover:bg-card hover:border-primary transition-all text-left active:scale-95"
+                  >
+                    <div className="font-display text-lg text-primary">Slot {i + 1}</div>
+                    {slot ? (
+                      <>
+                        <div className="font-game text-sm text-foreground/90">
+                          Chapter {levelToChapter(slot.level)} · {CHAPTER_NAMES[levelToChapter(slot.level)]}
+                        </div>
+                        <div className="font-game text-xs text-muted-foreground">
+                          Level {slot.level} · Score {slot.score} · {formatDate(slot.timestamp)}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="font-game text-sm text-muted-foreground">— Empty · New Game —</div>
+                    )}
+                  </button>
+                  {slot && (
+                    <button
+                      onClick={() => { deleteSlot(i); refreshSlots(); }}
+                      className="px-3 py-2 text-xs font-game bg-destructive/70 text-destructive-foreground rounded hover:bg-destructive transition-all"
+                      title="Delete save"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setShowSlots(false)}
+            className="mt-6 px-6 py-2 bg-secondary text-secondary-foreground font-game rounded-lg hover:bg-secondary/80 transition-all active:scale-95"
+          >
+            ← Back
+          </button>
+        </div>
+      )}
     </div>
   );
 };

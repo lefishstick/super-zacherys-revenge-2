@@ -5,6 +5,8 @@ import { Cutscene } from '@/game/types';
 import TitleScreen from './TitleScreen';
 import GameOverScreen from './GameOverScreen';
 import CutsceneScreen from './CutsceneScreen';
+import DevModeScreen from './DevModeScreen';
+import { saveSlot, levelToChapter, heroForChapter, type SaveSlot } from '@/game/saveSystem';
 
 // Chapter start levels — checkpoints are set at chapter boundaries
 const CHAPTER_START_LEVEL: Record<number, number> = {
@@ -20,7 +22,9 @@ function getChapterForLevel(level: number): number {
 }
 
 const GameCanvas = () => {
-  const { canvasRef, gameState, score, currentLevel, startGame, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H } = useGameLoop();
+  const { canvasRef, gameState, score, currentLevel, startGame, startAtLevel, beginLevel, setGameStateTo, CANVAS_W, CANVAS_H } = useGameLoop();
+  const [showDevMode, setShowDevMode] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const leviAudioRef = useRef<HTMLAudioElement | null>(null);
   const cjAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -43,6 +47,15 @@ const GameCanvas = () => {
       setCheckpointLevel(startLvl);
     }
   }, [currentLevel]);
+
+  // Auto-save active slot whenever level changes during play
+  useEffect(() => {
+    if (activeSlot === null) return;
+    if (gameState !== 'playing' && gameState !== 'cutscene') return;
+    const chapter = levelToChapter(currentLevel);
+    const hero = isJesse ? 'jesse' : isCJ ? 'cj' : isLevi ? 'levi' : 'zachery';
+    saveSlot(activeSlot, { level: currentLevel, chapter, hero, score });
+  }, [activeSlot, currentLevel, score, gameState, isJesse, isCJ, isLevi]);
 
   // Listen for Levi switch event
   useEffect(() => {
@@ -192,7 +205,8 @@ const GameCanvas = () => {
     }
   }, [gameState]);
 
-  const handleStart = useCallback(() => {
+  const handleStart = useCallback((slotIndex?: number) => {
+    if (slotIndex !== undefined) setActiveSlot(slotIndex);
     // Show intro cutscenes before level 1
     const sceneIds = LEVEL_CUTSCENE_BEFORE[1] || [];
     const scenes = sceneIds.map(id => CUTSCENES[id]).filter(Boolean);
@@ -205,6 +219,24 @@ const GameCanvas = () => {
       startGame();
     }
   }, [startGame, setGameStateTo]);
+
+  const handleContinueSlot = useCallback((slot: SaveSlot) => {
+    setActiveSlot(slot.slot);
+    const hero = slot.hero ?? heroForChapter(levelToChapter(slot.level), slot.level);
+    setIsLevi(hero === 'levi');
+    setIsCJ(hero === 'cj');
+    setIsJesse(hero === 'jesse');
+    startAtLevel(slot.level, hero);
+  }, [startAtLevel]);
+
+  const handleDevPick = useCallback((level: number, hero: 'zachery' | 'levi' | 'cj' | 'jesse') => {
+    setActiveSlot(null); // dev mode doesn't auto-save
+    setIsLevi(hero === 'levi');
+    setIsCJ(hero === 'cj');
+    setIsJesse(hero === 'jesse');
+    setShowDevMode(false);
+    startAtLevel(level, hero);
+  }, [startAtLevel]);
 
   // Handle level transitions with cutscenes
   const handleLevelTransition = useCallback((nextLevel: number) => {
@@ -378,7 +410,16 @@ const GameCanvas = () => {
           style={{ imageRendering: 'auto' }}
         />
         
-        {gameState === 'title' && <TitleScreen onStart={handleStart} />}
+        {gameState === 'title' && !showDevMode && (
+          <TitleScreen
+            onStart={() => handleStart()}
+            onContinueSlot={handleContinueSlot}
+            onDevMode={() => setShowDevMode(true)}
+          />
+        )}
+        {gameState === 'title' && showDevMode && (
+          <DevModeScreen onPick={handleDevPick} onBack={() => setShowDevMode(false)} />
+        )}
         {showCutscene && cutsceneQueue.length > 0 && (
           <CutsceneScreen cutscenes={cutsceneQueue} onComplete={handleCutsceneComplete} />
         )}
