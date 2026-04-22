@@ -40,6 +40,7 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
   const [ready, setReady] = useState(false);
   const [slots, setSlots] = useState<(SaveSlot | null)[]>(() => loadSlots());
   const [showSlots, setShowSlots] = useState(false);
+  const [devUnlocked, setDevUnlocked] = useState(false);
 
   const refreshSlots = () => setSlots(loadSlots());
 
@@ -167,12 +168,20 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
       />
 
       <div className="relative z-10 flex flex-col items-center gap-4">
-        <img
-          src={bossImg}
-          alt="Boss"
-          className="w-28 h-28 object-contain animate-float opacity-50"
-          style={{ filter: 'drop-shadow(0 0 24px hsl(25 90% 50% / 0.5))' }}
-        />
+        <button
+          type="button"
+          onClick={() => setDevUnlocked(true)}
+          aria-label="Title image"
+          className="bg-transparent border-0 p-0 cursor-pointer"
+          title=""
+        >
+          <img
+            src={bossImg}
+            alt="Boss"
+            className="w-28 h-28 object-contain animate-float opacity-50 hover:opacity-70 transition-opacity"
+            style={{ filter: 'drop-shadow(0 0 24px hsl(25 90% 50% / 0.5))' }}
+          />
+        </button>
 
         <h1 className="font-display text-3xl md:text-5xl font-black text-center leading-tight animate-pulse-glow text-primary drop-shadow-lg">
           Super Zachery's
@@ -194,12 +203,14 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
           ⚔️ Start Adventure ⚔️
         </button>
 
-        <button
-          onClick={onDevMode}
-          className="mt-2 px-5 py-2 bg-secondary/70 text-secondary-foreground font-game text-sm rounded-md hover:bg-secondary transition-all active:scale-95"
-        >
-          🛠 Dev Mode
-        </button>
+        {devUnlocked && (
+          <button
+            onClick={onDevMode}
+            className="mt-2 px-5 py-2 bg-secondary/70 text-secondary-foreground font-game text-sm rounded-md hover:bg-secondary transition-all active:scale-95 animate-pulse"
+          >
+            🛠 Dev Mode
+          </button>
+        )}
 
         <div className="mt-4 text-muted-foreground font-game text-sm text-center space-y-1 drop-shadow-md">
           <p>Arrow Keys / WASD — Move & Jump</p>

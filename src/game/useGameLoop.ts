@@ -186,7 +186,7 @@ export function useGameLoop() {
       if (s.player.health > s.player.maxHealth) s.player.health = s.player.maxHealth;
       s.companions = s.heroOrder
         .filter(h => h !== activeHero)
-        .map((h, i) => makeComp(h, -50 - i * 35));
+        .map((h, i) => makeComp(h, -55 - i * 50));
       s.suckState.active = false;
       s.suckState.meter = 0;
     } else {
@@ -638,6 +638,21 @@ export function useGameLoop() {
           p.isJesse = newHero === 'jesse';
           if (p.isCJ) { p.ammo = p.ammo || 30; p.maxAmmo = 30; }
           else { p.maxAmmo = 0; }
+          // Swap to a sensible default weapon for the new hero so attacks work
+          const defaultWeapon: WeaponType =
+            newHero === 'cj' ? 'iron_fist' :
+            newHero === 'levi' ? 'forest_blade' :
+            newHero === 'jesse' ? 'forest_blade' :
+            'forest_blade';
+          if (!p.weapons.includes(defaultWeapon)) {
+            p.weapons = [...p.weapons, defaultWeapon];
+          }
+          p.currentWeapon = defaultWeapon;
+          // Cancel any in-progress attack so the new hero doesn't inherit a stale swing
+          p.isAttacking = false;
+          p.attackTimer = 0;
+          // Brief invincibility so player isn't immediately hit on swap
+          p.invincibleTimer = Math.max(p.invincibleTimer, 30);
           if (newHero === 'jesse') {
             window.dispatchEvent(new CustomEvent('switch_to_jesse'));
           } else if (newHero === 'cj') {
@@ -733,8 +748,10 @@ export function useGameLoop() {
           }
         }
 
-        // Follow the player (target position: 60-80px behind)
-        const followX = p.x - (comp.heroType === s.companions[0]?.heroType ? 60 : 110);
+        // Follow the player — each companion at its own staggered offset
+        const compIdx = s.companions.indexOf(comp);
+        const followSide = p.facingRight ? -1 : 1;
+        const followX = p.x + followSide * (60 + compIdx * 45);
         const dx = followX - comp.x;
         if (Math.abs(dx) > 10) {
           comp.x += Math.sign(dx) * Math.min(3.5, Math.abs(dx));
@@ -3361,7 +3378,8 @@ export function useGameLoop() {
           ctx.fillStyle = '#ffffffcc';
           ctx.font = 'bold 9px MedievalSharp';
           ctx.textAlign = 'center';
-          ctx.fillText(comp.heroType === 'cj' ? 'CJ' : comp.heroType === 'levi' ? 'LEVI' : 'ZACH', compX + comp.width / 2, comp.y - 5);
+          const compLabel = comp.heroType === 'cj' ? 'CJ' : comp.heroType === 'levi' ? 'LEVI' : comp.heroType === 'jesse' ? 'JESSE' : 'ZACH';
+          ctx.fillText(compLabel, compX + comp.width / 2, comp.y - 5);
         }
       }
     }
