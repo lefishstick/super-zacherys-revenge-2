@@ -78,5 +78,5 @@ export const CHAPTER_NAMES: Record<number, string> = {
   8: 'Levi Awakens',
   9: 'Sgt. CJ Arrives',
   10: 'Steel Tide',
-  11: 'Mother of All Rot',
+  11: 'The Iron Convergence',
 };

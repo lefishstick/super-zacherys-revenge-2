@@ -57,146 +57,65 @@ const GameCanvas = () => {
     saveSlot(activeSlot, { level: currentLevel, chapter, hero, score });
   }, [activeSlot, currentLevel, score, gameState, isJesse, isCJ, isLevi]);
 
-  // Listen for Levi switch event
+  // ── UNIFIED MUSIC MANAGEMENT ─────────────────────────────────────────────
+  // Single source of truth: pause everything, then start exactly one track
+  // based on current game state. Prevents multiple themes overlapping.
   useEffect(() => {
-    const handler = () => {
-      setIsLevi(true);
-      // Switch music
-      audioRef.current?.pause();
-      if (audioRef.current) audioRef.current.currentTime = 0;
-      if (!leviAudioRef.current) {
-        leviAudioRef.current = new Audio('/audio/levi-theme.mp3');
-        leviAudioRef.current.loop = true;
-        leviAudioRef.current.volume = 0.4;
+    const ensure = (ref: React.MutableRefObject<HTMLAudioElement | null>, src: string, vol: number) => {
+      if (!ref.current) {
+        ref.current = new Audio(src);
+        ref.current.loop = true;
+        ref.current.volume = vol;
       }
-      leviAudioRef.current.play().catch(() => {});
+      return ref.current;
     };
-    window.addEventListener('switch_to_levi', handler);
-    return () => window.removeEventListener('switch_to_levi', handler);
-  }, []);
+    const stopAll = () => {
+      [audioRef, leviAudioRef, cjAudioRef, jesseAudioRef, wormAudioRef].forEach(r => {
+        if (r.current) { r.current.pause(); }
+      });
+    };
 
-  // Listen for CJ switch event
-  useEffect(() => {
-    const handler = () => {
-      setIsCJ(true);
-      setIsLevi(false);
-      audioRef.current?.pause();
-      leviAudioRef.current?.pause();
-      if (audioRef.current) audioRef.current.currentTime = 0;
-      if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
-      if (!cjAudioRef.current) {
-        cjAudioRef.current = new Audio('/audio/cj-theme.mp3');
-        cjAudioRef.current.loop = true;
-        cjAudioRef.current.volume = 0.4;
-      }
-      cjAudioRef.current.play().catch(() => {});
-    };
-    window.addEventListener('switch_to_cj', handler);
-    return () => window.removeEventListener('switch_to_cj', handler);
-  }, []);
+    if (gameState !== 'playing' && gameState !== 'cutscene') {
+      stopAll();
+      [audioRef, leviAudioRef, cjAudioRef, jesseAudioRef, wormAudioRef].forEach(r => {
+        if (r.current) r.current.currentTime = 0;
+      });
+      return;
+    }
 
-  // Listen for Jesse switch event
-  useEffect(() => {
-    const handler = () => {
-      setIsJesse(true);
-      setIsCJ(false);
-      setIsLevi(false);
-      audioRef.current?.pause();
-      leviAudioRef.current?.pause();
-      cjAudioRef.current?.pause();
-      if (!jesseAudioRef.current) {
-        jesseAudioRef.current = new Audio('/audio/jesse-theme.mp3');
-        jesseAudioRef.current.loop = true;
-        jesseAudioRef.current.volume = 0.4;
-      }
-      jesseAudioRef.current.play().catch(() => {});
-    };
-    window.addEventListener('switch_to_jesse', handler);
-    return () => window.removeEventListener('switch_to_jesse', handler);
-  }, []);
-
-  // Listen for hero swap back to non-Jesse heroes — pause Jesse music
-  useEffect(() => {
-    const handler = () => {
-      setIsJesse(false);
-      jesseAudioRef.current?.pause();
-    };
-    window.addEventListener('switch_to_zachery', handler);
-    window.addEventListener('switch_to_levi', handler);
-    window.addEventListener('switch_to_cj', handler);
-    return () => {
-      window.removeEventListener('switch_to_zachery', handler);
-      window.removeEventListener('switch_to_levi', handler);
-      window.removeEventListener('switch_to_cj', handler);
-    };
-  }, []);
-
-  // Boss music: play great-worm-boss theme on level 22
-  useEffect(() => {
-    if (gameState === 'playing' && currentLevel === 22) {
-      audioRef.current?.pause();
-      leviAudioRef.current?.pause();
-      cjAudioRef.current?.pause();
-      jesseAudioRef.current?.pause();
-      if (!wormAudioRef.current) {
-        wormAudioRef.current = new Audio('/audio/great-worm-boss.mp3');
-        wormAudioRef.current.loop = true;
-        wormAudioRef.current.volume = 0.5;
-      }
-      wormAudioRef.current.play().catch(() => {});
+    stopAll();
+    let toPlay: HTMLAudioElement | null = null;
+    if (currentLevel === 22) {
+      toPlay = ensure(wormAudioRef, '/audio/great-worm-boss.mp3', 0.5);
+    } else if (isJesse) {
+      toPlay = ensure(jesseAudioRef, '/audio/jesse-theme.mp3', 0.4);
+    } else if (isCJ) {
+      toPlay = ensure(cjAudioRef, '/audio/cj-theme.mp3', 0.4);
+    } else if (isLevi) {
+      toPlay = ensure(leviAudioRef, '/audio/levi-theme.mp3', 0.4);
     } else {
-      wormAudioRef.current?.pause();
+      toPlay = ensure(audioRef, '/audio/theme.mp3', 0.4);
     }
-  }, [gameState, currentLevel]);
+    toPlay?.play().catch(() => {});
+  }, [gameState, currentLevel, isLevi, isCJ, isJesse]);
 
+  // Hero swap events — STATE ONLY. Audio is handled by the unified music effect above.
   useEffect(() => {
-    if (gameState === 'playing' || gameState === 'cutscene') {
-      if (currentLevel === 22) {
-        // Boss music handled separately
-        return;
-      }
-      if (isJesse) {
-        if (!jesseAudioRef.current) {
-          jesseAudioRef.current = new Audio('/audio/jesse-theme.mp3');
-          jesseAudioRef.current.loop = true;
-          jesseAudioRef.current.volume = 0.4;
-        }
-        jesseAudioRef.current.play().catch(() => {});
-      } else if (isCJ) {
-        if (!cjAudioRef.current) {
-          cjAudioRef.current = new Audio('/audio/cj-theme.mp3');
-          cjAudioRef.current.loop = true;
-          cjAudioRef.current.volume = 0.4;
-        }
-        cjAudioRef.current.play().catch(() => {});
-      } else if (isLevi) {
-        if (!leviAudioRef.current) {
-          leviAudioRef.current = new Audio('/audio/levi-theme.mp3');
-          leviAudioRef.current.loop = true;
-          leviAudioRef.current.volume = 0.4;
-        }
-        leviAudioRef.current.play().catch(() => {});
-      } else {
-        if (!audioRef.current) {
-          audioRef.current = new Audio('/audio/theme.mp3');
-          audioRef.current.loop = true;
-          audioRef.current.volume = 0.4;
-        }
-        audioRef.current.play().catch(() => {});
-      }
-    } else if (gameState === 'title' || gameState === 'gameover') {
-      audioRef.current?.pause();
-      if (audioRef.current) audioRef.current.currentTime = 0;
-      leviAudioRef.current?.pause();
-      if (leviAudioRef.current) leviAudioRef.current.currentTime = 0;
-      cjAudioRef.current?.pause();
-      if (cjAudioRef.current) cjAudioRef.current.currentTime = 0;
-      jesseAudioRef.current?.pause();
-      if (jesseAudioRef.current) jesseAudioRef.current.currentTime = 0;
-      wormAudioRef.current?.pause();
-      if (wormAudioRef.current) wormAudioRef.current.currentTime = 0;
-    }
-  }, [gameState, isLevi, isCJ, isJesse, currentLevel]);
+    const onLevi = () => { setIsLevi(true); setIsCJ(false); setIsJesse(false); };
+    const onCJ = () => { setIsCJ(true); setIsLevi(false); setIsJesse(false); };
+    const onJesse = () => { setIsJesse(true); setIsCJ(false); setIsLevi(false); };
+    const onZach = () => { setIsLevi(false); setIsCJ(false); setIsJesse(false); };
+    window.addEventListener('switch_to_levi', onLevi);
+    window.addEventListener('switch_to_cj', onCJ);
+    window.addEventListener('switch_to_jesse', onJesse);
+    window.addEventListener('switch_to_zachery', onZach);
+    return () => {
+      window.removeEventListener('switch_to_levi', onLevi);
+      window.removeEventListener('switch_to_cj', onCJ);
+      window.removeEventListener('switch_to_jesse', onJesse);
+      window.removeEventListener('switch_to_zachery', onZach);
+    };
+  }, []);
 
   // When game signals a cutscene-before-level
   useEffect(() => {

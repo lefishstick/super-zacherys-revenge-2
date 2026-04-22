@@ -155,15 +155,18 @@ export function useGameLoop() {
     
     // Chapter 11+: Initialize AI companion heroes
     if (level.chapter >= 11) {
-      // Jesse joins at level 21 (mid-chapter 11)
+      // Jesse joins at level 21 (mid-chapter 11) — added to roster only,
+      // player keeps controlling current hero until they press Q to cycle.
       if (levelNum >= 21 && !s.heroOrder.includes('jesse')) {
         s.heroOrder = [...s.heroOrder, 'jesse'];
-        window.dispatchEvent(new CustomEvent('switch_to_jesse'));
       }
       const heroHP = (h: 'zachery' | 'levi' | 'cj' | 'jesse') =>
         h === 'levi' ? 20 : h === 'jesse' ? 18 : h === 'cj' ? 15 : 10;
       const makeComp = (heroType: 'zachery' | 'levi' | 'cj' | 'jesse', xOff: number): Companion => ({
-        x: 50 + xOff, y: level.groundY - 60,
+        // Spawn companions just BEHIND the player, on-screen, so they're
+        // immediately visible after the regroup cutscene.
+        x: Math.max(20, s.player!.x + xOff),
+        y: level.groundY - 60,
         width: 40, height: 55,
         velocityY: 0, onGround: false,
         facingRight: true,
@@ -182,7 +185,7 @@ export function useGameLoop() {
       if (s.player.health > s.player.maxHealth) s.player.health = s.player.maxHealth;
       s.companions = s.heroOrder
         .filter(h => h !== activeHero)
-        .map((h, i) => makeComp(h, -40 - i * 50));
+        .map((h, i) => makeComp(h, -50 - i * 35));
       s.suckState.active = false;
       s.suckState.meter = 0;
     } else {

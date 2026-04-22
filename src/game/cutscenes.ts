@@ -530,6 +530,18 @@ export const CUTSCENES: Record<string, Cutscene> = {
     ],
   },
 
+  jesse_legend: {
+    id: 'jesse_legend', title: 'A LEGEND STIRS', chapterName: 'Whispers from the East',
+    lines: [
+      { speaker: 'narrator', text: 'Far from the rotted forest, in the ruins of an old gymnasium, a figure has been training for years.' },
+      { speaker: 'narrator', text: 'They called him Jubelende Jesse — "the rejoicing one." A varsity prodigy who walked away from the world when the Rot began.' },
+      { speaker: 'narrator', text: 'He swore he would only return when the world needed a final play.' },
+      { speaker: 'jesse', text: '...the ground\'s shaking. It\'s HER. The big one.' },
+      { speaker: 'jesse', text: '*picks up basketball*  *picks up football*  ...Coach used to say — the best players show up in the fourth quarter.' },
+      { speaker: 'jesse', text: 'Time to lace up.' },
+    ],
+  },
+
   jesse_intro: {
     id: 'jesse_intro', title: 'A NEW CHALLENGER', chapterName: 'Jubelende Jesse',
     lines: [
@@ -541,7 +553,22 @@ export const CUTSCENES: Record<string, Cutscene> = {
       { speaker: 'levi', text: '...I like him.' },
       { speaker: 'zachery', text: 'You can fight?' },
       { speaker: 'jesse', text: 'Brother, I\'ve been benched my whole life waiting for THIS game. Pass me the ball — I\'ll END THIS THING.' },
-      { speaker: 'narrator', text: 'Press Q to cycle to JESSE — basketball bounces off enemies, footballs spiral straight through them!' },
+      { speaker: 'cj', text: 'How do you even know how to use those?' },
+      { speaker: 'jesse', text: 'Three-point championship, district MVP, varsity QB. The Rot took everyone in the stands. I\'m the only one left who remembers the rules.' },
+      { speaker: 'jesse', text: 'These aren\'t just balls. They\'re the LAST CHEER. The last roar of a crowd that won\'t stop fighting.' },
+      { speaker: 'narrator', text: 'Press Q to cycle to JESSE — basketball BOUNCES off platforms, footballs PIERCE straight through enemies!' },
+      { speaker: 'jesse', text: 'Let\'s run the play. ON THREE.' },
+    ],
+  },
+
+  jesse_resolve: {
+    id: 'jesse_resolve', title: 'THE FINAL QUARTER', chapterName: 'Jesse\'s Resolve',
+    lines: [
+      { speaker: 'jesse', text: 'You hear that? The wind. The way the trees are leaning toward her...' },
+      { speaker: 'jesse', text: 'Coach told me — you don\'t play for the trophy. You play for the people who can\'t.' },
+      { speaker: 'jesse', text: 'For my team. For my family. For everyone she rotted into nothing.' },
+      { speaker: 'zachery', text: 'Then we go in together.' },
+      { speaker: 'jesse', text: 'Damn right we do. Final quarter, baby. WE\'RE NOT LOSING THIS ONE.' },
     ],
   },
 
@@ -630,9 +657,9 @@ export const LEVEL_CUTSCENE_BEFORE: Record<number, string[]> = {
   17: ['chapter9_mid'],
   18: ['rotten_tank_intro'],
   19: ['ending', 'chapter11_start'],
-  20: ['chapter11_mid'],
+  20: ['chapter11_mid', 'jesse_legend'],
   21: ['jesse_intro'],
-  22: ['chapter11_late', 'mech_worm_intro'],
+  22: ['jesse_resolve', 'chapter11_late', 'mech_worm_intro'],
 };
 
 // Map of which weapon cutscene plays when a weapon is picked up

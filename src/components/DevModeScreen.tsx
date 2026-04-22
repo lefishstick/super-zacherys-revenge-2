@@ -50,8 +50,8 @@ const DevModeScreen = ({ onPick, onBack }: DevModeScreenProps) => {
           onClick={() => onPick(21, 'jesse')}
           className="p-4 rounded-lg border-2 border-yellow-500/50 bg-card/80 hover:bg-card hover:border-yellow-400 transition-all text-left active:scale-95"
         >
-          <div className="font-display text-lg text-yellow-300">Ch 11 · Jesse</div>
-          <div className="font-game text-sm text-foreground/90 truncate">Jesse Joins</div>
+          <div className="font-display text-lg text-yellow-300">Jesse Joins</div>
+          <div className="font-game text-sm text-foreground/90 truncate">Mid-Chapter 11</div>
           <div className="font-game text-xs mt-1 text-yellow-300">Level 21 · Jesse</div>
         </button>
 
@@ -59,8 +59,8 @@ const DevModeScreen = ({ onPick, onBack }: DevModeScreenProps) => {
           onClick={() => onPick(22, 'cj')}
           className="p-4 rounded-lg border-2 border-red-500/50 bg-card/80 hover:bg-card hover:border-red-400 transition-all text-left active:scale-95"
         >
-          <div className="font-display text-lg text-red-400">Final Boss</div>
-          <div className="font-game text-sm text-foreground/90 truncate">Mother of All Rot</div>
+          <div className="font-display text-lg text-red-400">Final Boss Only</div>
+          <div className="font-game text-sm text-foreground/90 truncate">Skip to the fight</div>
           <div className="font-game text-xs mt-1 text-orange-400">Level 22 · All Heroes</div>
         </button>
       </div>
