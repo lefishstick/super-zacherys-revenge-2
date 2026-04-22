@@ -13,6 +13,7 @@ const leviImg = '/images/levi.png';
 const cjImg = '/images/cj.png';
 const rottenTankImg = '/images/rotten-tank.png';
 const jesseImg = '/images/jesse.png';
+const motherOfRotImg = '/images/mother-of-rot.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -90,7 +91,7 @@ export function useGameLoop() {
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg, jesse: jesseImg };
+    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg, jesse: jesseImg, motherOfRot: motherOfRotImg };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -3185,84 +3186,52 @@ export function useGameLoop() {
           ctx.restore();
         }
 
-        // Body segments (5 segments from tail to head)
-        const segW = b.width / 5;
-        const segH = b.height;
-        const mouthSide = b.direction < 0 ? 0 : b.width - segW;
-
-        for (let seg = 4; seg >= 0; seg--) {
-          const segX = bx + (b.direction < 0 ? seg : 4 - seg) * segW;
-          const wobble = Math.sin(t * 0.005 + seg * 0.8) * 4;
-          const isHead = seg === 0;
-          const segColor = isHead ? '#2a5a2a' : (seg % 2 === 0 ? '#1a3a1a' : '#223322');
-          
-          ctx.fillStyle = segColor;
-          ctx.beginPath();
-          safeRoundRect(ctx, segX, b.y + wobble, segW - 4, segH, isHead ? 8 : 4);
-          ctx.fill();
-
-          // Metal bands / armor rings
-          ctx.fillStyle = '#446644';
-          ctx.fillRect(segX + 2, b.y + wobble + 8, segW - 8, 6);
-          ctx.fillRect(segX + 2, b.y + wobble + segH - 16, segW - 8, 6);
-
-          // Circuit lines
-          ctx.strokeStyle = phaseGlow;
-          ctx.lineWidth = 1;
-          ctx.globalAlpha = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(segX + 4, b.y + wobble + segH / 2 - 8);
-          ctx.lineTo(segX + segW - 8, b.y + wobble + segH / 2 - 8);
-          ctx.stroke();
-          ctx.globalAlpha = 1;
-        }
-
-        // Head: huge maw
-        const headX = bx + mouthSide;
+        // Body: render the Mother of Rot sprite stretched across the boss box
+        const motherImg = s.images.motherOfRot;
         const wobbleHead = Math.sin(t * 0.005) * 4;
-        ctx.fillStyle = '#1a4a1a';
-        ctx.beginPath();
-        safeRoundRect(ctx, headX, b.y + wobbleHead - 6, segW + 10, segH + 12, 10);
-        ctx.fill();
+        const breathe = 1 + Math.sin(t * 0.004) * 0.02;
+        const drawW = b.width;
+        const drawH = b.height * breathe;
+        const drawY = b.y + wobbleHead - (drawH - b.height) / 2;
+        if (motherImg?.complete && motherImg.naturalWidth > 0) {
+          ctx.save();
+          // Phase tint: greener early, redder in phase 3
+          if (b.phase >= 3) {
+            ctx.filter = 'hue-rotate(-20deg) saturate(1.4) brightness(1.05)';
+          } else if (b.phase >= 2) {
+            ctx.filter = 'saturate(1.2)';
+          }
+          // Flip horizontally if facing right
+          if (b.direction < 0) {
+            ctx.drawImage(motherImg, bx, drawY, drawW, drawH);
+          } else {
+            ctx.translate(bx + drawW, drawY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(motherImg, 0, 0, drawW, drawH);
+          }
+          ctx.restore();
+        } else {
+          // Fallback: simple dark body until image loads
+          ctx.fillStyle = '#1a3a1a';
+          ctx.fillRect(bx, b.y, b.width, b.height);
+        }
         ctx.shadowBlur = 0;
 
-        // Eyes (2 glowing eyes on head)
+        // Glowing eye accent on top of the sprite (synced to attack/phase)
+        const headX = bx + (b.direction < 0 ? 0 : b.width - b.width / 5);
         const eyeY = b.y + wobbleHead + 18;
         const eyeX1 = headX + (b.direction < 0 ? 10 : 6);
-        const eyeX2 = headX + (b.direction < 0 ? 20 : 16);
         ctx.fillStyle = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
         ctx.shadowColor = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
-        ctx.shadowBlur = 12;
-        ctx.beginPath(); ctx.arc(eyeX1, eyeY, 7, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(eyeX2, eyeY + 12, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(eyeX1, eyeY, 6, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Maw / mouth
-        const mawOpen = b.attackType === 'suck' ? 1.0 : 0.4;
-        const mawX = headX + (b.direction < 0 ? -14 : segW);
-        ctx.fillStyle = b.attackType === 'suck' ? '#ff440044' : '#00220088';
-        ctx.fillStyle = '#111111';
-        ctx.beginPath();
-        ctx.ellipse(mawX + (b.direction < 0 ? 7 : -5), b.y + wobbleHead + segH / 2,
-          16, segH / 2 * mawOpen, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Teeth
-        if (b.attackType === 'suck') {
-          ctx.fillStyle = '#44ff88';
-          ctx.shadowColor = '#44ff88';
-          ctx.shadowBlur = 15;
-          for (let t2 = 0; t2 < 4; t2++) {
-            const ty = b.y + wobbleHead + 20 + t2 * 18;
-            ctx.fillRect(mawX + (b.direction < 0 ? 2 : -12), ty, 10, 8);
-          }
-          ctx.shadowBlur = 0;
-        }
-
-        // Suck vortex effect
+        // Suck vortex effect (in front of mouth)
         if (b.attackType === 'suck' && b.suckTimer !== undefined && b.suckTimer > 20) {
           ctx.globalAlpha = Math.min(0.7, (b.suckTimer! - 20) / 60);
-          const vortexX = mawX + (b.direction < 0 ? 0 : 0);
-          const vortexY = b.y + wobbleHead + segH / 2;
+          const vortexX = bx + (b.direction < 0 ? -10 : b.width + 10);
+          const vortexY = b.y + b.height / 2;
           const vortGrad = ctx.createRadialGradient(vortexX, vortexY, 5, vortexX, vortexY, 140);
           vortGrad.addColorStop(0, '#44ff8888');
           vortGrad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -3293,7 +3262,8 @@ export function useGameLoop() {
         ctx.font = '10px MedievalSharp';
         ctx.fillText(`Phase ${b.phase}: ${wormPhaseNames[b.phase - 1]}`, CANVAS_W / 2, 64);
       } else {
-        const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : s.images.boss;
+        const isMW = b.bossType === 'mech_worm';
+        const bossImage = isRT ? s.images.rottenTank : isRC ? s.images.rottenCore : isMW ? s.images.motherOfRot : s.images.boss;
         
         if (bossImage?.complete) {
           ctx.save();

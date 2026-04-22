@@ -1,0 +1,13 @@
+uploads = []
+
+[[generated]]
+id = "1OcHNKae9qXFr1mDmybS-"
+uri = "file://attached_assets/generated_images/generated_image.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "bEimCz7XPqla0O4YDIfgy"
+uri = "file://public/images/mother-of-rot.png"
+type = "image"
+title = "Mother of All Rot — preview"
