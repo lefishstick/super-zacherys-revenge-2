@@ -3337,6 +3337,7 @@ export function useGameLoop() {
       for (const comp of s.companions) {
         if (comp.health <= 0) continue;
         const compX = comp.x - camX;
+        const compY = comp.y;
         const compImage = comp.heroType === 'cj' ? s.images.cj
           : comp.heroType === 'levi' ? s.images.levi
           : comp.heroType === 'jesse' ? s.images.jesse
@@ -3352,34 +3353,36 @@ export function useGameLoop() {
             ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 10;
           } else if (comp.heroType === 'levi') {
             ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10;
+          } else if (comp.heroType === 'jesse') {
+            ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 8;
           } else {
             ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8;
           }
           // Slightly transparent so they're clearly AI companions
           ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.8;
           if (!comp.facingRight) {
-            ctx.translate(compX + comp.width, comp.y);
+            ctx.translate(compX + comp.width, compY);
             ctx.scale(-1, 1);
             ctx.drawImage(compImage, 0, 0, comp.width, comp.height);
           } else {
-            ctx.drawImage(compImage, compX, comp.y, comp.width, comp.height);
+            ctx.drawImage(compImage, compX, compY, comp.width, comp.height);
           }
           ctx.shadowBlur = 0;
           ctx.restore();
           // Small companion HP bar under their feet
           const barW = comp.width;
           const barH = 4;
-          const barY = comp.y + comp.height + 3;
+          const barY = compY + comp.height + 3;
           ctx.fillStyle = '#330000';
           ctx.fillRect(compX, barY, barW, barH);
-          ctx.fillStyle = comp.heroType === 'cj' ? '#4488ff' : comp.heroType === 'levi' ? '#ff6600' : '#44ff88';
+          ctx.fillStyle = comp.heroType === 'cj' ? '#4488ff' : comp.heroType === 'levi' ? '#ff6600' : comp.heroType === 'jesse' ? '#ff8822' : '#44ff88';
           ctx.fillRect(compX, barY, barW * (comp.health / comp.maxHealth), barH);
           // Label above their head
           ctx.fillStyle = '#ffffffcc';
           ctx.font = 'bold 9px MedievalSharp';
           ctx.textAlign = 'center';
           const compLabel = comp.heroType === 'cj' ? 'CJ' : comp.heroType === 'levi' ? 'LEVI' : comp.heroType === 'jesse' ? 'JESSE' : 'ZACH';
-          ctx.fillText(compLabel, compX + comp.width / 2, comp.y - 5);
+          ctx.fillText(compLabel, compX + comp.width / 2, compY - 5);
         }
       }
     }
