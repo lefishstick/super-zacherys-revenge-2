@@ -8,7 +8,7 @@ channel = "stable-25_05"
 [deployment]
 deploymentTarget = "autoscale"
 run = "npx vite --host 0.0.0.0 --port 5000"
-build = ["npm", "run", "build"]
+build = "npm ci --legacy-peer-deps && npm run build"
 
 [workflows]
 runButton = "Project"
