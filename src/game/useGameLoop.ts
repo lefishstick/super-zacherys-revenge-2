@@ -1362,7 +1362,8 @@ export function useGameLoop() {
             }
           }
         }
-      } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+      } else if (!p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        // Zachery-only weapon melee (Levi handled above; CJ/Jesse use their own attacks)
         let hit = false;
         if (isAOE) {
           const dx = (e.x + e.width / 2) - aoeCenterX;
