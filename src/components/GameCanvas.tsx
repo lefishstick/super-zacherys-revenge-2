@@ -57,46 +57,60 @@ const GameCanvas = () => {
     saveSlot(activeSlot, { level: currentLevel, chapter, hero, score });
   }, [activeSlot, currentLevel, score, gameState, isJesse, isCJ, isLevi]);
 
-  // ── UNIFIED MUSIC MANAGEMENT ─────────────────────────────────────────────
-  // Single source of truth: pause everything, then start exactly one track
-  // based on current game state. Prevents multiple themes overlapping.
+  // ── UNIFIED MUSIC MANAGEMENT WITH CROSS-FADE ───────────────────────────
+  // Single source of truth: fades out the current track and fades in the
+  // new one whenever the active character or game state changes.
   useEffect(() => {
-    const ensure = (ref: React.MutableRefObject<HTMLAudioElement | null>, src: string, vol: number) => {
+    const FADE_MS = 700;
+    const TARGET_VOL = 0.4;
+    const ensure = (ref: React.MutableRefObject<HTMLAudioElement | null>, src: string) => {
       if (!ref.current) {
         ref.current = new Audio(src);
         ref.current.loop = true;
-        ref.current.volume = vol;
+        ref.current.volume = 0;
       }
       return ref.current;
     };
-    const stopAll = () => {
-      [audioRef, leviAudioRef, cjAudioRef, jesseAudioRef, wormAudioRef].forEach(r => {
-        if (r.current) { r.current.pause(); }
-      });
+    const fadeOut = (a: HTMLAudioElement | null) => {
+      if (!a || a.paused) return;
+      const startVol = a.volume;
+      const start = performance.now();
+      const step = () => {
+        const t = Math.min(1, (performance.now() - start) / FADE_MS);
+        a.volume = Math.max(0, startVol * (1 - t));
+        if (t < 1 && !a.paused) requestAnimationFrame(step);
+        else { a.pause(); a.volume = 0; }
+      };
+      requestAnimationFrame(step);
     };
+    const fadeIn = (a: HTMLAudioElement) => {
+      a.volume = 0;
+      a.play().catch(() => {});
+      const start = performance.now();
+      const step = () => {
+        const t = Math.min(1, (performance.now() - start) / FADE_MS);
+        a.volume = TARGET_VOL * t;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const allRefs = [audioRef, leviAudioRef, cjAudioRef, jesseAudioRef, wormAudioRef];
 
     if (gameState !== 'playing' && gameState !== 'cutscene') {
-      stopAll();
-      [audioRef, leviAudioRef, cjAudioRef, jesseAudioRef, wormAudioRef].forEach(r => {
-        if (r.current) r.current.currentTime = 0;
-      });
+      allRefs.forEach(r => fadeOut(r.current));
       return;
     }
 
-    stopAll();
-    let toPlay: HTMLAudioElement | null = null;
-    if (currentLevel === 22) {
-      toPlay = ensure(wormAudioRef, '/audio/great-worm-boss.mp3', 0.5);
-    } else if (isJesse) {
-      toPlay = ensure(jesseAudioRef, '/audio/jesse-theme.mp3', 0.4);
-    } else if (isCJ) {
-      toPlay = ensure(cjAudioRef, '/audio/cj-theme.mp3', 0.4);
-    } else if (isLevi) {
-      toPlay = ensure(leviAudioRef, '/audio/levi-theme.mp3', 0.4);
-    } else {
-      toPlay = ensure(audioRef, '/audio/theme.mp3', 0.4);
-    }
-    toPlay?.play().catch(() => {});
+    let target: HTMLAudioElement;
+    if (currentLevel === 22) target = ensure(wormAudioRef, '/audio/great-worm-boss.mp3');
+    else if (isJesse) target = ensure(jesseAudioRef, '/audio/jesse-theme.mp3');
+    else if (isCJ) target = ensure(cjAudioRef, '/audio/cj-theme.mp3');
+    else if (isLevi) target = ensure(leviAudioRef, '/audio/levi-theme.mp3');
+    else target = ensure(audioRef, '/audio/theme.mp3');
+
+    // Fade out everything else, fade in target (if not already playing loudly)
+    allRefs.forEach(r => { if (r.current && r.current !== target) fadeOut(r.current); });
+    if (target.paused || target.volume < TARGET_VOL * 0.9) fadeIn(target);
   }, [gameState, currentLevel, isLevi, isCJ, isJesse]);
 
   // Hero swap events — STATE ONLY. Audio is handled by the unified music effect above.
