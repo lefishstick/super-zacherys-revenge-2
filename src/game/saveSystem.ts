@@ -57,9 +57,9 @@ export function levelToChapter(level: number): number {
 }
 
 export function heroForChapter(chapter: number, level?: number): 'zachery' | 'levi' | 'cj' | 'jesse' {
-  if (chapter <= 7) return 'zachery';
-  if (chapter === 8) return 'levi';
-  if (chapter === 9 || chapter === 10) return 'cj';
+  if (chapter <= 4) return 'zachery';
+  if (chapter >= 5 && chapter <= 7) return 'levi';
+  if (chapter >= 8 && chapter <= 10) return 'cj';
   if (chapter === 11) {
     if (level !== undefined && level >= 21) return 'jesse';
     return 'cj';
