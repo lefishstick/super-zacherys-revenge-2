@@ -235,9 +235,9 @@ export function useGameLoop() {
     resetFinisher();
     setScore(0);
 
-    const allWeapons = ['forest_blade', 'vine_whip', 'static_bolt', 'iron_fist', 'corruption_purge'];
-    const allLevi = ['mega_chomp', 'toxic_spit', 'belly_slam', 'frenzy'];
-    const allCJ = ['frag_grenade', 'flashbang', 'combat_roll', 'airstrike'];
+    const allWeapons: WeaponType[] = ['forest_blade', 'vine_whip', 'static_bolt', 'iron_fist', 'corruption_purge'];
+    const allLevi: LeviAbility[] = ['mega_chomp', 'toxic_spit', 'belly_slam', 'frenzy'];
+    const allCJ: CJAbility[] = ['frag_grenade', 'flashbang', 'combat_roll', 'airstrike'];
 
     // Seed player with full kit for the chosen hero
     s.player = {
