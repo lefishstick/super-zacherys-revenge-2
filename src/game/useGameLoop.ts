@@ -80,7 +80,7 @@ export function useGameLoop() {
     companions: [] as Companion[],
     // Chapter 11: Q key hero cycling
     qWasUp: true,
-    heroOrder: ['zachery', 'levi', 'cj'] as ('zachery' | 'levi' | 'cj')[],
+    heroOrder: ['zachery', 'levi', 'cj'] as ('zachery' | 'levi' | 'cj' | 'jesse')[],
     activeHeroIndex: 2, // which hero the player controls (starts as CJ after ch10)
     // Chapter 11: Mech-worm suck mechanic
     suckState: {
