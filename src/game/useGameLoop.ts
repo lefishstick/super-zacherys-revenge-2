@@ -1900,7 +1900,7 @@ export function useGameLoop() {
             }
           }
           return false;
-        } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        } else if (!p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
           let hit = false;
           if (isAOE) {
             const dx = (b.x + b.width / 2) - aoeCenterX;
