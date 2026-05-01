@@ -1523,7 +1523,7 @@ export function useGameLoop() {
         }
 
         // Melee attack from player hits worm
-        if (!p.isLevi && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        if (!p.isLevi && !p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
           const atkSide = p.facingRight ? p.x + p.width : p.x - weapon.range;
           const atkW = weapon.range;
           if (atkSide < b.x + b.width && atkSide + atkW > b.x &&
