@@ -80,7 +80,7 @@ export function useGameLoop() {
     companions: [] as Companion[],
     // Chapter 11: Q key hero cycling
     qWasUp: true,
-    heroOrder: ['zachery', 'levi', 'cj'] as ('zachery' | 'levi' | 'cj')[],
+    heroOrder: ['zachery', 'levi', 'cj'] as ('zachery' | 'levi' | 'cj' | 'jesse')[],
     activeHeroIndex: 2, // which hero the player controls (starts as CJ after ch10)
     // Chapter 11: Mech-worm suck mechanic
     suckState: {
@@ -235,9 +235,9 @@ export function useGameLoop() {
     resetFinisher();
     setScore(0);
 
-    const allWeapons = ['forest_blade', 'vine_whip', 'static_bolt', 'iron_fist', 'corruption_purge'];
-    const allLevi = ['mega_chomp', 'toxic_spit', 'belly_slam', 'frenzy'];
-    const allCJ = ['frag_grenade', 'flashbang', 'combat_roll', 'airstrike'];
+    const allWeapons: WeaponType[] = ['forest_blade', 'vine_whip', 'static_bolt', 'iron_fist', 'corruption_purge'];
+    const allLevi: LeviAbility[] = ['mega_chomp', 'toxic_spit', 'belly_slam', 'frenzy'];
+    const allCJ: CJAbility[] = ['frag_grenade', 'flashbang', 'combat_roll', 'airstrike'];
 
     // Seed player with full kit for the chosen hero
     s.player = {
@@ -1362,7 +1362,8 @@ export function useGameLoop() {
             }
           }
         }
-      } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+      } else if (!p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        // Zachery-only weapon melee (Levi handled above; CJ/Jesse use their own attacks)
         let hit = false;
         if (isAOE) {
           const dx = (e.x + e.width / 2) - aoeCenterX;
@@ -1522,7 +1523,7 @@ export function useGameLoop() {
         }
 
         // Melee attack from player hits worm
-        if (!p.isLevi && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        if (!p.isLevi && !p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
           const atkSide = p.facingRight ? p.x + p.width : p.x - weapon.range;
           const atkW = weapon.range;
           if (atkSide < b.x + b.width && atkSide + atkW > b.x &&
@@ -1899,7 +1900,7 @@ export function useGameLoop() {
             }
           }
           return false;
-        } else if (p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
+        } else if (!p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
           let hit = false;
           if (isAOE) {
             const dx = (b.x + b.width / 2) - aoeCenterX;
@@ -3342,24 +3343,24 @@ export function useGameLoop() {
           : comp.heroType === 'levi' ? s.images.levi
           : comp.heroType === 'jesse' ? s.images.jesse
           : s.images.player;
-        if (compImage?.complete) {
+        if (compImage?.complete && compImage.naturalWidth > 0) {
           ctx.save();
-          // Flicker when hit
-          if (comp.invincibleTimer > 0 && Math.floor(comp.invincibleTimer / 4) % 2 === 0) {
-            ctx.globalAlpha = 0.4;
-          }
-          // Hero-specific glow
+          // Hero-specific glow (set BEFORE alpha so it renders correctly)
           if (comp.heroType === 'cj') {
-            ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 10;
+            ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 12;
           } else if (comp.heroType === 'levi') {
-            ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 12;
           } else if (comp.heroType === 'jesse') {
-            ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 10;
           } else {
-            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8;
+            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 10;
           }
-          // Slightly transparent so they're clearly AI companions
-          ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.8;
+          // Alpha: flicker on hit, otherwise fully visible
+          if (comp.invincibleTimer > 0 && Math.floor(comp.invincibleTimer / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.45;
+          } else {
+            ctx.globalAlpha = 1;
+          }
           if (!comp.facingRight) {
             ctx.translate(compX + comp.width, compY);
             ctx.scale(-1, 1);
@@ -3367,7 +3368,6 @@ export function useGameLoop() {
           } else {
             ctx.drawImage(compImage, compX, compY, comp.width, comp.height);
           }
-          ctx.shadowBlur = 0;
           ctx.restore();
           // Small companion HP bar under their feet
           const barW = comp.width;
