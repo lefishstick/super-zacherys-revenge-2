@@ -3343,24 +3343,24 @@ export function useGameLoop() {
           : comp.heroType === 'levi' ? s.images.levi
           : comp.heroType === 'jesse' ? s.images.jesse
           : s.images.player;
-        if (compImage?.complete) {
+        if (compImage?.complete && compImage.naturalWidth > 0) {
           ctx.save();
-          // Flicker when hit
-          if (comp.invincibleTimer > 0 && Math.floor(comp.invincibleTimer / 4) % 2 === 0) {
-            ctx.globalAlpha = 0.4;
-          }
-          // Hero-specific glow
+          // Hero-specific glow (set BEFORE alpha so it renders correctly)
           if (comp.heroType === 'cj') {
-            ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 10;
+            ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 12;
           } else if (comp.heroType === 'levi') {
-            ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 12;
           } else if (comp.heroType === 'jesse') {
-            ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ff8822'; ctx.shadowBlur = 10;
           } else {
-            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8;
+            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 10;
           }
-          // Slightly transparent so they're clearly AI companions
-          ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.8;
+          // Alpha: flicker on hit, otherwise fully visible
+          if (comp.invincibleTimer > 0 && Math.floor(comp.invincibleTimer / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.45;
+          } else {
+            ctx.globalAlpha = 1;
+          }
           if (!comp.facingRight) {
             ctx.translate(compX + comp.width, compY);
             ctx.scale(-1, 1);
@@ -3368,7 +3368,6 @@ export function useGameLoop() {
           } else {
             ctx.drawImage(compImage, compX, compY, comp.width, comp.height);
           }
-          ctx.shadowBlur = 0;
           ctx.restore();
           // Small companion HP bar under their feet
           const barW = comp.width;
