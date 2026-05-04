@@ -735,15 +735,10 @@ export function useGameLoop() {
         p.facingRight = false;
       }
 
-      // Escape when meter full
       if (s.suckState.meter >= 100) {
         s.suckState.active = false;
         s.suckState.meter = 0;
-        // Damage the boss
-        if (level.boss) {
-          level.boss.health -= 12;
-          if (level.boss.health < 0) level.boss.health = 0;
-        }
+        // No damage to boss on escape (as requested)
         spawnParticles(p.x + 20, p.y + 28, '#ffee44', 20);
         spawnParticles(p.x + 20, p.y + 28, '#ffffff', 15);
         // Launch player away from boss
@@ -798,8 +793,8 @@ export function useGameLoop() {
             if (!e.isAlive) continue;
             const ex = Math.abs(e.x - comp.x);
             if (ex < 120) {
-              // Deal damage to nearest enemy
-              e.health -= comp.heroType === 'levi' ? 3 : comp.heroType === 'jesse' ? 3 : comp.heroType === 'cj' ? 2 : 2;
+              // Deal damage to nearest enemy (reduced for companions)
+              e.health -= 0.5;
               if (e.health <= 0) {
                 e.health = 0; e.isAlive = false;
                 s.score += 100;
@@ -815,7 +810,7 @@ export function useGameLoop() {
           if (level.boss && level.boss.isAlive && !s.suckState.active) {
             const bx = Math.abs(level.boss.x + level.boss.width / 2 - comp.x);
             if (bx < 150) {
-              level.boss.health -= 1;
+              level.boss.health -= 0.5;
               comp.attackTimer = 40;
               comp.facingRight = level.boss.x > comp.x;
               spawnParticles(level.boss.x + level.boss.width / 2, level.boss.y + 30,
@@ -1413,7 +1408,8 @@ export function useGameLoop() {
           const dy = (e.y + e.height / 2) - aoeCenterY;
           hit = Math.sqrt(dx * dx + dy * dy) < (weapon.aoeRadius ?? 0);
         } else {
-          hit = atkX < e.x + e.width && atkX + atkRange > e.x &&
+          const atkX_enemy = p.facingRight ? p.x + p.width : p.x - atkRange;
+          hit = atkX_enemy < e.x + e.width && atkX_enemy + atkRange > e.x &&
                 atkY < e.y + e.height && atkY + p.height > e.y;
         }
         if (hit) {
@@ -1575,9 +1571,9 @@ export function useGameLoop() {
 
         // Melee attack from player hits worm
         if (!p.isLevi && !p.isCJ && !p.isJesse && p.isAttacking && p.attackTimer > weapon.speed - 5 && !weapon.isRanged) {
-          const atkSide = p.facingRight ? p.x + p.width : p.x - weapon.range;
-          const atkW = weapon.range;
-          if (atkSide < b.x + b.width && atkSide + atkW > b.x &&
+          const atkX_worm = p.facingRight ? p.x + p.width : p.x - weapon.range;
+          const atkW_worm = weapon.range;
+          if (atkX_worm < b.x + b.width && atkX_worm + atkW_worm > b.x &&
               p.y < b.y + b.height && p.y + p.height > b.y) {
             b.health -= weapon.damage;
             spawnParticles(b.x + b.width / 2, b.y + 40, weapon.color, 8);
@@ -3609,110 +3605,119 @@ export function useGameLoop() {
         ctx.shadowBlur = 0;
 
       } else if (p.isLevi) {
-        // Levi: massive chomping jaw with drool & darkness aura
-        const biteX = p.facingRight ? px + p.width - 5 : px + 5;
+        // Levi: massive chomping jaw
         const biteDir = p.facingRight ? 1 : -1;
+        const biteX = p.facingRight ? px + p.width - 5 : px + 5;
         const chomp = Math.abs(Math.sin(at * 15)) * 18;
+        
+        ctx.save();
+        ctx.translate(biteX, p.y + p.height / 2);
+        if (!p.facingRight) ctx.scale(-1, 1);
+        
         // Darkness aura
-        const auraGrad = ctx.createRadialGradient(biteX + biteDir * 20, p.y + p.height / 2, 0, biteX + biteDir * 20, p.y + p.height / 2, 44);
+        const auraGrad = ctx.createRadialGradient(20, 0, 0, 20, 0, 44);
         auraGrad.addColorStop(0, 'rgba(255,80,0,0.6)'); auraGrad.addColorStop(1, 'rgba(255,80,0,0)');
         ctx.fillStyle = auraGrad;
-        ctx.beginPath(); ctx.arc(biteX + biteDir * 20, p.y + p.height / 2, 44, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(20, 0, 44, 0, Math.PI * 2); ctx.fill();
+        
         // Top jaw
         ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 12;
         ctx.strokeStyle = '#ff6600'; ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(biteX, p.y + p.height / 2 - chomp);
-        ctx.quadraticCurveTo(biteX + biteDir * 25, p.y + p.height / 2 - chomp * 0.4, biteX + biteDir * 44, p.y + p.height / 2);
+        ctx.moveTo(0, -chomp);
+        ctx.quadraticCurveTo(25, -chomp * 0.4, 44, 0);
         ctx.stroke();
         // Bottom jaw
         ctx.beginPath();
-        ctx.moveTo(biteX, p.y + p.height / 2 + chomp);
-        ctx.quadraticCurveTo(biteX + biteDir * 25, p.y + p.height / 2 + chomp * 0.4, biteX + biteDir * 44, p.y + p.height / 2);
+        ctx.moveTo(0, chomp);
+        ctx.quadraticCurveTo(25, chomp * 0.4, 44, 0);
         ctx.stroke();
         // Teeth
         ctx.fillStyle = '#ffeecc'; ctx.shadowBlur = 0;
         for (let t2 = 0; t2 < 4; t2++) {
-          const tx = biteX + biteDir * (8 + t2 * 9);
+          const tx = 8 + t2 * 9;
           const th = 6 + Math.sin(t2) * 2;
-          ctx.beginPath(); ctx.moveTo(tx - 3, p.y + p.height / 2 - chomp * 0.5); ctx.lineTo(tx, p.y + p.height / 2 - chomp * 0.5 + th); ctx.lineTo(tx + 3, p.y + p.height / 2 - chomp * 0.5); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(tx - 3, p.y + p.height / 2 + chomp * 0.5); ctx.lineTo(tx, p.y + p.height / 2 + chomp * 0.5 - th); ctx.lineTo(tx + 3, p.y + p.height / 2 + chomp * 0.5); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(tx - 3, -chomp * 0.5); ctx.lineTo(tx, -chomp * 0.5 + th); ctx.lineTo(tx + 3, -chomp * 0.5); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(tx - 3, chomp * 0.5); ctx.lineTo(tx, chomp * 0.5 - th); ctx.lineTo(tx + 3, chomp * 0.5); ctx.fill();
         }
+        ctx.restore();
 
       } else if (weapon.id === 'forest_blade') {
         // Forest Blade: green glowing arc slash
-        const slashX = p.facingRight ? px + p.width : px;
-        const slashDir = p.facingRight ? 1 : -1;
         const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
+        ctx.save();
+        ctx.translate(p.facingRight ? px + p.width : px, p.y + p.height / 2);
+        if (!p.facingRight) ctx.scale(-1, 1);
+        
         ctx.shadowColor = '#88ff44'; ctx.shadowBlur = 16;
         ctx.strokeStyle = '#aaff44'; ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(slashX, p.y + p.height / 2, weapon.range * 0.7, -Math.PI * 0.4 * slashDir, Math.PI * 0.4 * slashDir, slashDir < 0);
+        ctx.arc(0, 0, weapon.range * 0.7, -Math.PI * 0.4, Math.PI * 0.4, false);
         ctx.stroke();
         // Leaf shards along slash
         ctx.fillStyle = '#44cc22'; ctx.shadowBlur = 6;
         for (let li = 0; li < 5; li++) {
-          const ang = (-0.4 + li * 0.2) * Math.PI * slashDir;
+          const ang = (-0.4 + li * 0.2) * Math.PI;
           const lr = weapon.range * 0.65 * (0.7 + progress * 0.3);
-          ctx.beginPath(); ctx.ellipse(slashX + Math.cos(ang) * lr, p.y + p.height / 2 + Math.sin(ang) * lr, 5, 3, ang + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(Math.cos(ang) * lr, Math.sin(ang) * lr, 5, 3, ang + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.shadowBlur = 0;
+        ctx.restore();
 
       } else if (weapon.id === 'vine_whip') {
-        // Vine Whip: animated thorned multi-segment whip
-        const wStartX = p.facingRight ? px + p.width : px;
-        const wEndX = p.facingRight ? px + p.width + weapon.range : px - weapon.range;
-        const wMidX = (wStartX + wEndX) / 2;
+        // Vine Whip
         const wProgress = Math.max(0, 1 - p.attackTimer / weapon.speed);
-        const wCurX = wStartX + (wEndX - wStartX) * wProgress;
+        const wEndX = weapon.range;
+        const wMidX = wEndX / 2;
+        const wCurX = wEndX * wProgress;
         const wAmp = 22 * Math.sin(at * 12);
+        
+        ctx.save();
+        ctx.translate(p.facingRight ? px + p.width : px, p.y + p.height / 2);
+        if (!p.facingRight) ctx.scale(-1, 1);
+        
         ctx.shadowColor = '#22cc44'; ctx.shadowBlur = 8;
-        // Main vine segments
         ctx.strokeStyle = '#2a8822'; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.moveTo(wStartX, p.y + p.height / 2);
-        ctx.quadraticCurveTo(wMidX * wProgress + wStartX * (1 - wProgress), p.y + p.height / 2 - wAmp, wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10);
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(wMidX * wProgress, -wAmp, wCurX, Math.sin(at * 8) * 10);
         ctx.stroke();
-        // Bright vine overlay
         ctx.strokeStyle = '#44dd66'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(wStartX, p.y + p.height / 2);
-        ctx.quadraticCurveTo(wMidX * wProgress + wStartX * (1 - wProgress), p.y + p.height / 2 - wAmp, wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10);
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(wMidX * wProgress, -wAmp, wCurX, Math.sin(at * 8) * 10);
         ctx.stroke();
         // Thorns
         ctx.fillStyle = '#88ff44'; ctx.shadowBlur = 4;
         for (let ti = 1; ti <= 4; ti++) {
           const tFrac = ti / 5 * wProgress;
-          const tx2 = wStartX + (wCurX - wStartX) * tFrac;
-          const ty2 = p.y + p.height / 2 + Math.sin(tFrac * Math.PI) * (-wAmp);
-          const tAng = (p.facingRight ? 0.4 : -0.4) * Math.PI;
+          const tx2 = wCurX * tFrac;
+          const ty2 = Math.sin(tFrac * Math.PI) * (-wAmp);
+          const tAng = 0.4 * Math.PI;
           ctx.beginPath(); ctx.moveTo(tx2, ty2); ctx.lineTo(tx2 + Math.cos(tAng) * 7, ty2 + Math.sin(tAng) * 7); ctx.lineTo(tx2 + 2, ty2); ctx.fill();
         }
-        // Leaf at tip
-        ctx.fillStyle = '#33aa22'; ctx.shadowBlur = 0;
-        ctx.beginPath(); ctx.ellipse(wCurX, p.y + p.height / 2 + Math.sin(at * 8) * 10, 7, 4, p.facingRight ? -0.4 : 0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
 
       } else if (weapon.id === 'iron_fist') {
-        // Iron Fist: massive orange fist silhouette + shockwave ring
-        const fistX = p.facingRight ? px + p.width + 10 : px - 10;
-        const fistDir = p.facingRight ? 1 : -1;
+        // Iron Fist
         const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
-        const fistOff = progress * 30 * fistDir;
-        // Shockwave rings
+        const fistOff = progress * 30;
+        
+        ctx.save();
+        ctx.translate(p.facingRight ? px + p.width + 10 : px - 10, p.y + p.height / 2);
+        if (!p.facingRight) ctx.scale(-1, 1);
+        
         ctx.shadowColor = '#ff6622'; ctx.shadowBlur = 20;
         ctx.strokeStyle = '#ff8844'; ctx.lineWidth = 3; ctx.globalAlpha = 1 - progress;
-        ctx.beginPath(); ctx.arc(fistX + fistOff, p.y + p.height / 2, weapon.range * progress, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = (1 - progress) * 0.5;
-        ctx.beginPath(); ctx.arc(fistX + fistOff, p.y + p.height / 2, weapon.range * progress * 0.6, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 1;
-        // Fist knuckle silhouette
+        ctx.beginPath(); ctx.arc(fistOff, 0, weapon.range * progress, 0, Math.PI * 2); ctx.stroke();
+        
         ctx.fillStyle = '#ffaa44'; ctx.shadowBlur = 14;
-        ctx.beginPath(); ctx.roundRect(fistX + fistOff - 14, p.y + p.height / 2 - 12, 28, 24, 5); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(fistOff - 14, -12, 28, 24, 5); ctx.fill();
         ctx.fillStyle = '#cc5500'; ctx.shadowBlur = 0;
         for (let ki = 0; ki < 4; ki++) {
-          ctx.beginPath(); ctx.arc(fistX + fistOff - 9 + ki * 6, p.y + p.height / 2 - 12, 4, Math.PI, 0); ctx.fill();
+          ctx.beginPath(); ctx.arc(fistOff - 9 + ki * 6, -12, 4, Math.PI, 0); ctx.fill();
         }
+        ctx.restore();
 
       } else if (weapon.id === 'corruption_purge') {
-        // Corruption Purge: expanding concentric purple rings + sparks
+        // Corruption Purge (AOE, no direction)
         const progress = Math.max(0, 1 - p.attackTimer / weapon.speed);
         for (let ri = 0; ri < 3; ri++) {
           const rProgress = Math.max(0, progress - ri * 0.15);
@@ -3723,7 +3728,6 @@ export function useGameLoop() {
           ctx.beginPath(); ctx.arc(px + p.width / 2, p.y + p.height / 2, weapon.aoeRadius! * rProgress, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-        // Spark bursts at ring edge
         ctx.fillStyle = '#ff88ff';
         for (let si = 0; si < 8; si++) {
           const sang = (si / 8) * Math.PI * 2 + at * 6;
