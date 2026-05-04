@@ -156,6 +156,11 @@ export function useGameLoop() {
     
     // Chapter 11+: Initialize AI companion heroes
     if (level.chapter >= 11) {
+      // Initialize heroOrder if it doesn't exist yet
+      if (!s.heroOrder || s.heroOrder.length === 0) {
+        s.heroOrder = ['zachery', 'levi', 'cj'];
+        s.activeHeroIndex = isLevi ? 1 : isCJ ? 2 : 0;
+      }
       // Jesse joins at level 21 (mid-chapter 11) — added to roster only,
       // player keeps controlling current hero until they press Q to cycle.
       if (levelNum >= 21 && !s.heroOrder.includes('jesse')) {
@@ -806,6 +811,14 @@ export function useGameLoop() {
               break;
             }
           }
+        }
+
+        // Rescue stuck companions: if too far behind or off-screen left, teleport to player
+        if (comp.x < p.x - 400 || comp.x < -50) {
+          comp.x = Math.max(20, p.x - 150);
+          comp.y = level.groundY - 60;
+          comp.velocityY = 0;
+          comp.onGround = true;
         }
       }
     }
