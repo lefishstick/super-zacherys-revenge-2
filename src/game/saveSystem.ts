@@ -9,9 +9,29 @@ export interface SaveSlot {
 
 const KEY = 'szr2_saves_v1';
 
-export function loadSlots(): (SaveSlot | null)[] {
+/**
+ * Storage adapter interface to allow swapping between localStorage (web)
+ * and file-system based storage (Electron).
+ * Using Promises to ensure compatibility with Electron's IPC which is usually async.
+ */
+interface StorageAdapter {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
+
+const localStorageAdapter: StorageAdapter = {
+  getItem: async (key) => localStorage.getItem(key),
+  setItem: async (key, value) => localStorage.setItem(key, value),
+  removeItem: async (key) => localStorage.removeItem(key),
+};
+
+// In a real Electron app, we would inject a different adapter via window.electronAPI
+const storage: StorageAdapter = (window as any).electronAPI?.storage || localStorageAdapter;
+
+export async function loadSlots(): Promise<(SaveSlot | null)[]> {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = await storage.getItem(KEY);
     if (!raw) return [null, null, null];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [null, null, null];
@@ -21,17 +41,17 @@ export function loadSlots(): (SaveSlot | null)[] {
   }
 }
 
-export function saveSlot(slot: number, data: Omit<SaveSlot, 'slot' | 'timestamp'>) {
+export async function saveSlot(slot: number, data: Omit<SaveSlot, 'slot' | 'timestamp'>) {
   if (slot < 0 || slot > 2) return;
-  const slots = loadSlots();
+  const slots = await loadSlots();
   slots[slot] = { ...data, slot, timestamp: Date.now() };
-  localStorage.setItem(KEY, JSON.stringify(slots));
+  await storage.setItem(KEY, JSON.stringify(slots));
 }
 
-export function deleteSlot(slot: number) {
-  const slots = loadSlots();
+export async function deleteSlot(slot: number) {
+  const slots = await loadSlots();
   slots[slot] = null;
-  localStorage.setItem(KEY, JSON.stringify(slots));
+  await storage.setItem(KEY, JSON.stringify(slots));
 }
 
 export function chapterStartLevel(chapter: number): number {

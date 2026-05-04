@@ -354,7 +354,7 @@ const GameCanvas = () => {
         
         {gameState === 'title' && !showDevMode && (
           <TitleScreen
-            onStart={() => handleStart()}
+            onStart={(slotIndex) => handleStart(slotIndex)}
             onContinueSlot={handleContinueSlot}
             onDevMode={() => setShowDevMode(true)}
           />

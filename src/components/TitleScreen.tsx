@@ -3,7 +3,7 @@ import bossImg from '@/assets/finalboss_2.png';
 import { loadSlots, deleteSlot, levelToChapter, CHAPTER_NAMES, type SaveSlot } from '@/game/saveSystem';
 
 interface TitleScreenProps {
-  onStart: () => void;
+  onStart: (slotIndex: number) => void;
   onContinueSlot: (slot: SaveSlot) => void;
   onDevMode: () => void;
 }
@@ -38,11 +38,18 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
   const leavesRef = useRef<Leaf[]>([]);
   const treeLeavesRef = useRef<TreeLeaf[]>([]);
   const [ready, setReady] = useState(false);
-  const [slots, setSlots] = useState<(SaveSlot | null)[]>(() => loadSlots());
+  const [slots, setSlots] = useState<(SaveSlot | null)[]>([null, null, null]);
   const [showSlots, setShowSlots] = useState(false);
   const [devUnlocked, setDevUnlocked] = useState(false);
 
-  const refreshSlots = () => setSlots(loadSlots());
+  const refreshSlots = async () => {
+    const loaded = await loadSlots();
+    setSlots(loaded);
+  };
+
+  useEffect(() => {
+    refreshSlots();
+  }, []);
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -229,7 +236,7 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
                   <button
                     onClick={() => {
                       if (slot) onContinueSlot(slot);
-                      else { onStart(); }
+                      else { onStart(i); }
                     }}
                     className="flex-1 p-4 rounded-lg border-2 border-border bg-card/80 hover:bg-card hover:border-primary transition-all text-left active:scale-95"
                   >
@@ -249,7 +256,7 @@ const TitleScreen = ({ onStart, onContinueSlot, onDevMode }: TitleScreenProps) =
                   </button>
                   {slot && (
                     <button
-                      onClick={() => { deleteSlot(i); refreshSlots(); }}
+                      onClick={async () => { await deleteSlot(i); await refreshSlots(); }}
                       className="px-3 py-2 text-xs font-game bg-destructive/70 text-destructive-foreground rounded hover:bg-destructive transition-all"
                       title="Delete save"
                     >
