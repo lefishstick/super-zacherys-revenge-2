@@ -8,12 +8,15 @@ import bossImg from '@/assets/finalboss_2.png';
 import playerImg from '@/assets/playermodel.png';
 
 // Images in public/ can be referenced by string paths
-const rottenCoreImg = '/images/rotten-core.png';
-const leviImg = '/images/levi.png';
-const cjImg = '/images/cj.png';
-const rottenTankImg = '/images/rotten-tank.png';
-const jesseImg = '/images/jesse.png';
-const motherOfRotImg = '/images/mother-of-rot.png';
+import rottenCoreImg from '@/assets/rotten-core.png';
+import leviImg from '@/assets/levi.png';
+import cjImg from '@/assets/cj.png';
+import rottenTankImg from '@/assets/rotten-tank.png';
+import jesseImg from '@/assets/jesse.png';
+import motherOfRotImg from '@/assets/mother-of-rot.png';
+import wormHeadImg from '@/assets/worm-head.png';
+import wormSegmentImg from '@/assets/worm-segment.png';
+import wormSkinImg from '@/assets/worm-skin.png';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
@@ -88,10 +91,16 @@ export function useGameLoop() {
       meter: 0,
       jWasUp: true,
     },
+    wormHistory: [] as { x: number, y: number }[],
   });
 
   const loadImages = useCallback(() => {
-    const srcs = { player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, rottenTank: rottenTankImg, jesse: jesseImg, motherOfRot: motherOfRotImg };
+    const srcs = { 
+      player: playerImg, onion: onionImg, egg: eggImg, boss: bossImg, 
+      rottenCore: rottenCoreImg, levi: leviImg, cj: cjImg, 
+      rottenTank: rottenTankImg, jesse: jesseImg, motherOfRot: motherOfRotImg,
+      wormHead: wormHeadImg, wormSegment: wormSegmentImg, wormSkin: wormSkinImg
+    };
     Object.entries(srcs).forEach(([key, src]) => {
       const img = new Image();
       img.src = src;
@@ -126,11 +135,26 @@ export function useGameLoop() {
     const isLevi = s.player?.isLevi ?? false;
     const isCJ = s.player?.isCJ ?? false;
     const isJesse = s.player?.isJesse ?? false;
+    
+    // Safety check: ensure hero matches chapter if initializing a new player
+    let finalIsLevi = isLevi;
+    let finalIsCJ = isCJ;
+    let finalIsJesse = isJesse;
+    
+    if (levelNum >= 19) {
+      // Chapter 11: handled by heroOrder below
+    } else if (levelNum >= 14) {
+      finalIsCJ = true; finalIsLevi = false; finalIsJesse = false;
+    } else if (levelNum >= 9) {
+      finalIsLevi = true; finalIsCJ = false; finalIsJesse = false;
+    }
+
     const leviMaxHP = 20;
     const zachMaxHP = 10;
     const cjMaxHP = 15;
     const jesseMaxHP = 18;
-    const maxHP = isJesse ? jesseMaxHP : isCJ ? cjMaxHP : isLevi ? leviMaxHP : zachMaxHP;
+    const maxHP = finalIsJesse ? jesseMaxHP : finalIsCJ ? cjMaxHP : finalIsLevi ? leviMaxHP : zachMaxHP;
+    
     s.player = {
       x: 50, y: level.groundY - 60,
       width: 40, height: 55,
@@ -140,18 +164,18 @@ export function useGameLoop() {
       isAttacking: false, attackTimer: 0,
       facingRight: true, isJumping: false, onGround: false,
       invincibleTimer: 0, score: s.score,
-      currentWeapon: s.player?.currentWeapon ?? 'forest_blade',
+      currentWeapon: s.player?.currentWeapon ?? (finalIsCJ ? 'iron_fist' : 'forest_blade'),
       weapons: s.player?.weapons ?? ['forest_blade'],
-      isLevi,
-      isCJ,
-      isJesse,
+      isLevi: finalIsLevi,
+      isCJ: finalIsCJ,
+      isJesse: finalIsJesse,
       devouredEnemies: s.player?.devouredEnemies ?? 0,
       leviAbilities: s.player?.leviAbilities ?? [],
       cjAbilities: s.player?.cjAbilities ?? [],
       grenadeCount: s.player?.grenadeCount ?? 3,
       grenadeCooldown: 0,
       ammo: s.player?.ammo ?? 30,
-      maxAmmo: isCJ ? 30 : 0,
+      maxAmmo: finalIsCJ ? 30 : 0,
     };
     
     // Chapter 11+: Initialize AI companion heroes
@@ -762,8 +786,8 @@ export function useGameLoop() {
           comp.x += Math.sign(dx) * Math.min(3.5, Math.abs(dx));
           comp.facingRight = dx > 0;
         }
-        // Jump if player is higher and companion is on ground
-        if (p.y < comp.y - 80 && comp.onGround) {
+        // Jump if player jumps or player is higher and companion is on ground
+        if ((p.isJumping || p.y < comp.y - 50) && comp.onGround) {
           comp.velocityY = JUMP_FORCE * 0.9;
           comp.onGround = false;
         }
@@ -1165,7 +1189,7 @@ export function useGameLoop() {
     for (const plat of level.platforms) {
       if (
         p.x + p.width > plat.x && p.x < plat.x + plat.width &&
-        p.y + p.height > plat.y && p.y + p.height < plat.y + plat.height + 15 &&
+        p.y + p.height > plat.y && p.y + p.height < plat.y + plat.height + 20 &&
         p.velocityY >= 0
       ) {
         p.y = plat.y - p.height;
@@ -1173,6 +1197,12 @@ export function useGameLoop() {
         p.onGround = true;
         p.isJumping = false;
       }
+    }
+
+    // Safety Net: Prevent falling under map
+    if (p.y > level.groundY + 200) {
+      p.y = level.groundY - 100;
+      p.velocityY = 0;
     }
 
     // Attack timer
@@ -1446,6 +1476,14 @@ export function useGameLoop() {
           if (p.x < b.x + b.width / 2) b.direction = -1;
           else b.direction = 1;
         }
+
+        // Record history for segments (store current head center position)
+        s.wormHistory.unshift({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+        if (s.wormHistory.length > 200) s.wormHistory.pop();
+        
+        // Ensure boss stays upright and properly positioned
+        b.velocityY = 0;
+        b.y = level.groundY - b.height + 10; // Slightly submerged in ground feel
 
         if (b.attackCooldown <= 0 && !s.suckState.active) {
           const rng = Math.random();
@@ -3186,89 +3224,159 @@ export function useGameLoop() {
       const isWorm = b.bossType === 'mech_worm';
 
       if (isWorm) {
-        // MECH-WORM: draw as a segmented mechanical serpent
+        // === SHAPE-BASED PREMIUM WORM (THE IRON MAW) ===
         ctx.save();
         const t = Date.now();
-        const phaseGlow = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff88' : '#22cc44';
-        ctx.shadowColor = phaseGlow;
-        ctx.shadowBlur = 20 + Math.sin(t * 0.006) * 12;
+        const phaseColor = b.phase >= 3 ? '#ff2200' : b.phase >= 2 ? '#44ff88' : '#22cc44';
+        const numSegments = 40;
+        const spacing = 4;
+        
+        // --- 1. Draw Body Path (The "Skin") ---
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Draw the core body using a thick gradient stroke
+        for (let i = 0; i < numSegments; i++) {
+          const pIdx = i * spacing;
+          const pos = s.wormHistory[pIdx] || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+          const wave = Math.sin(t * 0.004 + i * 0.3) * 10;
+          if (i === 0) ctx.moveTo(pos.x - camX, pos.y + wave);
+          else ctx.lineTo(pos.x - camX, pos.y + wave);
+        }
+        
+        // Shadow/Glow under the body
+        ctx.shadowColor = phaseColor;
+        ctx.shadowBlur = 20;
+        ctx.strokeStyle = '#0a1a0a';
+        ctx.lineWidth = b.height * 0.8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // Core metallic texture
+        ctx.strokeStyle = '#1a3a1a';
+        ctx.lineWidth = b.height * 0.7;
+        ctx.stroke();
 
-        // PLANT TENDRILS overlay (phases 1-2): writhing vines erupt from body
-        if (b.phase <= 2) {
+        // --- 2. Draw Mechanical Plates (Segments) ---
+        for (let i = numSegments - 1; i >= 0; i--) {
+          const histIdx = i * spacing;
+          const pos = s.wormHistory[histIdx] || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+          const drawX = pos.x - camX;
+          const wave = Math.sin(t * 0.004 + i * 0.3) * 10;
+          const drawY = pos.y + wave;
+          
+          const scale = Math.max(0.2, 1.0 - (i / numSegments) * 0.8);
+          const segR = (b.height / 2) * scale;
+          
           ctx.save();
-          for (let v = 0; v < 8; v++) {
-            const vbase = bx + (v / 7) * b.width;
-            const vsway = Math.sin(t * 0.003 + v * 0.7) * 18;
-            const vlen = 60 + Math.sin(t * 0.004 + v) * 20;
-            ctx.strokeStyle = '#3a8a3a';
-            ctx.lineWidth = 4;
-            ctx.shadowColor = '#22ff44';
-            ctx.shadowBlur = 8;
+          ctx.translate(drawX, drawY);
+          
+          // Rotation for plate alignment
+          const nextPos = s.wormHistory[Math.max(0, histIdx - 2)] || pos;
+          const prevPos = s.wormHistory[histIdx + 2] || pos;
+          const angle = Math.atan2(nextPos.y - prevPos.y, nextPos.x - prevPos.x);
+          ctx.rotate(angle);
+          
+          // Draw a "Plate" shape
+          const grad = ctx.createRadialGradient(-segR/4, -segR/4, 0, 0, 0, segR);
+          grad.addColorStop(0, '#2a5a2a');
+          grad.addColorStop(0.7, '#1a3a1a');
+          grad.addColorStop(1, '#051505');
+          
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, segR, segR * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Glowing "Bolt" or detail
+          if (i % 3 === 0) {
+            ctx.fillStyle = phaseColor;
+            ctx.globalAlpha = 0.3 + Math.sin(t * 0.005 + i) * 0.3;
             ctx.beginPath();
-            ctx.moveTo(vbase, b.y);
-            ctx.quadraticCurveTo(vbase + vsway, b.y - vlen / 2, vbase + vsway * 1.5, b.y - vlen);
-            ctx.stroke();
-            // Petal at the tip
-            ctx.fillStyle = '#aa44ff';
-            ctx.beginPath();
-            ctx.arc(vbase + vsway * 1.5, b.y - vlen, 5, 0, Math.PI * 2);
+            ctx.arc(0, -segR * 0.4, 3 * scale, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = 1.0;
           }
+          
+          // Mechanical ribs
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, -segR * 0.8);
+          ctx.lineTo(0, segR * 0.8);
+          ctx.stroke();
+          
           ctx.restore();
         }
+        
+        // --- 3. The Head (The Maw) ---
+        const headPos = s.wormHistory[0] || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+        const hX = headPos.x - camX;
+        const hY = headPos.y + Math.sin(t * 0.004) * 10;
+        
+        ctx.save();
+        ctx.translate(hX, hY);
+        const headAngle = Math.atan2(s.wormHistory[0]?.y - s.wormHistory[4]?.y, s.wormHistory[0]?.x - s.wormHistory[4]?.x) || 0;
+        ctx.rotate(headAngle);
+        
+        // Main Head Shell
+        ctx.fillStyle = '#1a3a1a';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 45, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Jaws
+        const jawOpen = b.attackType === 'suck' ? 0.6 : 0.2 + Math.sin(t * 0.008) * 0.1;
+        ctx.fillStyle = '#0a1a0a';
+        
+        // Upper Jaw
+        ctx.save();
+        ctx.rotate(-jawOpen);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(50, -20);
+        ctx.lineTo(40, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        
+        // Lower Jaw
+        ctx.save();
+        ctx.rotate(jawOpen);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(50, 20);
+        ctx.lineTo(40, -5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        
+        // Glowing Eyes
+        ctx.fillStyle = b.attackType === 'suck' ? '#ff2200' : phaseColor;
+        ctx.shadowColor = b.attackType === 'suck' ? '#ff2200' : phaseColor;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(15, -12, 6, 0, Math.PI * 2);
+        ctx.arc(15, 12, 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
 
-        // Body: render the Mother of Rot sprite stretched across the boss box
-        const motherImg = s.images.motherOfRot;
-        const wobbleHead = Math.sin(t * 0.005) * 4;
-        const breathe = 1 + Math.sin(t * 0.004) * 0.02;
-        const drawW = b.width;
-        const drawH = b.height * breathe;
-        const drawY = b.y + wobbleHead - (drawH - b.height) / 2;
-        if (motherImg?.complete && motherImg.naturalWidth > 0) {
-          ctx.save();
-          // Phase tint: greener early, redder in phase 3
-          if (b.phase >= 3) {
-            ctx.filter = 'hue-rotate(-20deg) saturate(1.4) brightness(1.05)';
-          } else if (b.phase >= 2) {
-            ctx.filter = 'saturate(1.2)';
-          }
-          // Flip horizontally if facing right
-          if (b.direction < 0) {
-            ctx.drawImage(motherImg, bx, drawY, drawW, drawH);
-          } else {
-            ctx.translate(bx + drawW, drawY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(motherImg, 0, 0, drawW, drawH);
-          }
-          ctx.restore();
-        } else {
-          // Fallback: simple dark body until image loads
-          ctx.fillStyle = '#1a3a1a';
-          ctx.fillRect(bx, b.y, b.width, b.height);
-        }
-        ctx.shadowBlur = 0;
-
-        // Glowing eye accent on top of the sprite (synced to attack/phase)
-        const headX = bx + (b.direction < 0 ? 0 : b.width - b.width / 5);
-        const eyeY = b.y + wobbleHead + 18;
-        const eyeX1 = headX + (b.direction < 0 ? 10 : 6);
-        ctx.fillStyle = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
-        ctx.shadowColor = b.attackType === 'suck' ? '#ff2200' : phaseGlow;
-        ctx.shadowBlur = 18;
-        ctx.beginPath(); ctx.arc(eyeX1, eyeY, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Suck vortex effect (in front of mouth)
+        // Vortex effect
         if (b.attackType === 'suck' && b.suckTimer !== undefined && b.suckTimer > 20) {
-          ctx.globalAlpha = Math.min(0.7, (b.suckTimer! - 20) / 60);
-          const vortexX = bx + (b.direction < 0 ? -10 : b.width + 10);
-          const vortexY = b.y + b.height / 2;
-          const vortGrad = ctx.createRadialGradient(vortexX, vortexY, 5, vortexX, vortexY, 140);
-          vortGrad.addColorStop(0, '#44ff8888');
+          ctx.globalAlpha = Math.min(0.6, (b.suckTimer! - 20) / 60);
+          const vortexX = hX + Math.cos(headAngle) * 80;
+          const vortexY = hY + Math.sin(headAngle) * 80;
+          const vortGrad = ctx.createRadialGradient(vortexX, vortexY, 10, vortexX, vortexY, 180);
+          vortGrad.addColorStop(0, phaseColor + '88');
           vortGrad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = vortGrad;
           ctx.beginPath();
-          ctx.arc(vortexX, vortexY, 140, 0, Math.PI * 2);
+          ctx.arc(vortexX, vortexY, 180, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = 1;
         }
@@ -3287,7 +3395,7 @@ export function useGameLoop() {
         ctx.fillStyle = '#ffffff';
         ctx.font = '12px MedievalSharp';
         ctx.textAlign = 'center';
-        ctx.fillText('THE MOTHER OF ALL ROT', CANVAS_W / 2, 52);
+        ctx.fillText('THE IRON MAW', CANVAS_W / 2, 52);
         const wormPhaseNames = ['The Awakening', 'The Bloom', 'Mechanized Wrath'];
         ctx.fillStyle = wormBarColor;
         ctx.font = '10px MedievalSharp';
@@ -3404,7 +3512,7 @@ export function useGameLoop() {
     const px = p.x - camX;
     const playerImage = p.isJesse ? s.images.jesse : p.isCJ ? s.images.cj : p.isLevi ? s.images.levi : s.images.player;
     const isRolling = s.rollState.isRolling;
-    if (playerImage?.complete) {
+    if (playerImage?.complete && playerImage.naturalWidth > 0) {
       ctx.save();
       if (p.invincibleTimer > 0 && !isRolling && Math.floor(p.invincibleTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.5;
@@ -3452,6 +3560,14 @@ export function useGameLoop() {
         ctx.drawImage(playerImage, px, p.y, p.width, p.height);
       }
       ctx.shadowBlur = 0;
+      ctx.restore();
+    } else {
+      // Fallback rendering if image is missing
+      ctx.save();
+      ctx.fillStyle = p.isLevi ? '#ff6600' : p.isCJ ? '#4488ff' : p.isJesse ? '#ffee22' : '#44ff88';
+      ctx.fillRect(px, p.y, p.width, p.height);
+      ctx.strokeStyle = '#fff';
+      ctx.strokeRect(px, p.y, p.width, p.height);
       ctx.restore();
     }
     

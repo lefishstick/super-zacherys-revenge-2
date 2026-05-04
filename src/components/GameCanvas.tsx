@@ -320,15 +320,24 @@ const GameCanvas = () => {
   const handleContinue = useCallback(() => {
     setShowCutscene(false);
     // Determine character state for checkpoint level
+    let hero: 'zachery' | 'levi' | 'cj' | 'jesse' = 'zachery';
     if (checkpointLevel >= 14) {
+      hero = 'cj';
       setIsCJ(true);
       setIsLevi(false);
+      setIsJesse(false);
     } else if (checkpointLevel >= 9) {
+      hero = 'levi';
       setIsLevi(true);
       setIsCJ(false);
+      setIsJesse(false);
+    } else {
+      setIsLevi(false);
+      setIsCJ(false);
+      setIsJesse(false);
     }
-    handleLevelTransition(checkpointLevel);
-  }, [checkpointLevel, handleLevelTransition]);
+    startAtLevel(checkpointLevel, hero);
+  }, [checkpointLevel, startAtLevel]);
 
   const checkpointChapter = getChapterForLevel(checkpointLevel);
 
